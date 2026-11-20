@@ -231,8 +231,9 @@
       "_ohne_hofer": "Hofer hat Getraenke nur als Wochenangebote ohne Kategorie; daher Stichworte plus Ausschluesse fuer Geraete und Suesswaren.",
       "unter": [
         { "id": "alkfrei-bier-wein", "name": "Alkoholfreies Bier, Wein & Sekt",
+          "alle":  [{ "pfadre": "alkohol|bier|wein|spirituose|aperitif|radler", "muster": "alkoholfrei|\\b0[,.]0\\b" }],
           "billa": ["alkoholfreies-bier-13797", "alkoholfreie-alternativen-15621", "alkoholfreie-alternativen-15616", "alkoholfreie-alternativen-15612", "alkoholfreie-spirituosen-14533"],
-          "spar":  ["alkoholfreies-bier-leichtbier", "alkoholfreie-weine", "alkoholfreie-schaumweine", "alkohlfreie-weine-schaumweine"],
+          "spar":  ["alkoholfreies-bier-leichtbier", "alkohlfreie-weine", "alkohlfreie-schaumweine", "alkoholfreie-weine", "alkoholfreie-schaumweine", "alkoholfreie-spirituosen"],
           "penny": [{ "pfad": "Getränke", "muster": "alkoholfrei|\\b0[,.]0\\b" }],
           "lidl":  [{ "pfad": "Alkoholfreie Weine" }, { "pfad": "Wein, Bier und Spirituosen", "muster": "alkoholfrei|\\b0[,.]0\\b" }],
           "hofer": [{ "pfad": "Alle", "muster": "(bier|wein|sekt|radler|prosecco).*(alkoholfrei|\\b0[,.]0\\b)|(alkoholfrei|\\b0[,.]0\\b).*(bier|wein|sekt|radler|prosecco)" }] },
@@ -307,12 +308,14 @@
           "lidl": [{ "pfad": "Elektrowerkzeuge" }, { "pfad": "Baumarkt & Garten", "muster": "akku|bohr|schrauber|s[äa]ge|schleifer|schwei[ßs]|kompressor|hobel|fr[äa]se|multitool|ladeger[äa]t|tacker|heißluft" }, { "pfad": "Marke:Parkside", "muster": "akku|bohr|schrauber|s[äa]ge|schleifer|schwei[ßs]|kompressor|hobel|fr[äa]se|multitool|ladeger[äa]t|tacker|heißluft" }],
           "hofer": [{ "pfad": "Marke:FERREX" }, { "pfad": "Marke:WORKZONE", "muster": "akku|bohr|schrauber|s[äa]ge|schleifer|schwei[ßs]|kompressor|hobel|fr[äa]se|multitool|ladeger[äa]t|tacker|heißluft|thermometer|messger[äa]t" }] },
         { "id": "werkstatt", "name": "Werkstatt & Handwerkzeug",
+          "alle": [{ "pfadre": "^werkzeug$|schrauben & haken|kleben & co|leitern" }],
           "lidl": [{ "pfad": "Werkstatt & Eisenwaren" }, { "pfad": "Handwerkzeuge" }, { "pfad": "Baumarkt & Garten", "muster": "regal|werkbank|zange|schraubendreher|bit|ratsche|hammer|koffer|box|leiter|wasserwaage" }],
           "hofer": [{ "pfad": "Marke:WORKZONE", "ohne": "jacke|hose|handschuh|weste|schuh|socken|overall" }] },
         { "id": "garten", "name": "Garten",
           "lidl": [{ "pfad": "Baumarkt & Garten", "muster": "garten|rasen|hecke|laub|bew[äa]sser|schlauch|pflanz|ast|kettens[äa]ge|vertikutier|gie[ßs]" }],
           "hofer": [{ "pfad": "Marke:GARDENLINE" }] },
         { "id": "bauen", "name": "Bauen & Renovieren",
+          "alle": [{ "pfadre": "farben & zubehör|farben & zubehoer|sanitär- & kleinmöbel" }],
           "lidl": [{ "pfad": "Bauen & Renovieren" }],
           "hofer": [] },
         { "id": "bekleidung", "name": "Arbeitsbekleidung",
@@ -371,29 +374,35 @@
       ]
     },
     {
+      "id": "nonfood", "name": "Spielzeug, Mode & Non-Food", "pos": 170,
+      "_hinweis": "Steht vor Haushalt: Spar fuehrt Spielwaren, Buero, Textilien und Freizeit unter 'Haushalt'.",
+      "unter": [
+        { "id": "spielzeug", "name": "Spielzeug, Spiele & Büro", "alle": [{ "pfadre": "spielzeug|spielware|spiele|spielen|lernen|unterhaltung|basteln|handarbeit|malen|schreibwaren|bürobedarf|buerobedarf" }] },
+        { "id": "mode", "name": "Mode, Schuhe & Textilien", "alle": [{ "pfadre": "^textilien$|^mode|mode &|herrenmode|damenmode|kindermode|bekleidung|^schuhe$|socken|strümpfe|struempfe" }] },
+        { "id": "technik", "name": "Elektronik & Technik", "alle": [{ "pfadre": "elektronik|multimedia|computer|handy|unterhaltungselektronik" }] },
+        { "id": "wohnen", "name": "Wohnen, Deko & Beleuchtung", "alle": [{ "pfadre": "^wohnen|wohnen &|einrichtung|dekoration|möbel|moebel" }] },
+        { "id": "freizeit", "name": "Sport, Freizeit & Reise", "alle": [{ "pfadre": "sport & freizeit|freizeit|reise|camping|outdoor|sportartikel" }] },
+        { "id": "nonfood-sonst", "name": "Sonstiges Non-Food", "alle": [{ "pfadre": "non-food|nonfood|gutschein|bücher|buecher|zeitschrift" }] }
+      ]
+    },
+    {
       "id": "haushalt", "name": "Haushalt & Garten", "pos": 140,
       "und": "haushalt|garten",
       "unter": [
         { "id": "papier", "name": "Küchenrolle, WC-Papier & Servietten", "alle": [{ "pfadre": "küchenrolle|kuechenrolle|wc.?papier|toilettenpapier|taschentücher|serviette" }] },
-        { "id": "reinigen", "name": "Putzen & Reinigen", "alle": [{ "pfadre": "putz|reinig|spül|spuel|geschirrsp|entkalk" }] },
-        { "id": "waschen", "name": "Waschen & Bügeln", "alle": [{ "pfadre": "wasch|weichsp|bügel|buegel" }] },
-        { "id": "folien", "name": "Folien, Beutel & Aufbewahrung", "alle": [{ "pfadre": "beutel|folie|gefrier|müll|muell|aufbewahr" }] },
+        { "id": "reinigen", "name": "Putzen & Reinigen", "alle": [{ "pfadre": "putz|reinig|spül|spuel|geschirrsp|entkalk|besen|bürsten|schwämme|lederpflege" }] },
+        { "id": "waschen", "name": "Waschen & Bügeln", "alle": [{ "pfadre": "wäschewaschen|waschmittel|textilpflege|weichsp|trocknen & bügeln|bügeln|buegeln" }] },
+        { "id": "elektro", "name": "Elektrische Haushaltsgeräte", "alle": [{ "pfadre": "elektrische haushaltsger|elektro großger|kaffeemaschinen|küchenmaschinen|mikrowelle|staubsauger|wetterstation" }] },
+        { "id": "heimtextil", "name": "Heimtextilien & Bettwäsche", "alle": [{ "pfadre": "heimtextil|bettw|bettware|frottier|matratze|heimdekor" }] },
+        { "id": "folien", "name": "Folien, Beutel & Aufbewahrung", "alle": [{ "pfadre": "beutel|folie|gefrier|müll|muell|aufbewahr|filter|backpapier" }] },
         { "id": "kerzen", "name": "Kerzen & Raumduft", "alle": [{ "pfadre": "kerze|lufterfr|raumduft|raumspray" }] },
-        { "id": "batterien", "name": "Batterien & Leuchtmittel", "alle": [{ "pfadre": "batter|leuchtmittel|glühbirne|gluehbirne" }] },
+        { "id": "licht", "name": "Batterien, Lampen & Heizen", "alle": [{ "pfadre": "batter|leuchtmittel|lampe|beleuchtung|heizen|klimatis|glühbirne|gluehbirne" }] },
+        { "id": "auto", "name": "Auto & Zweirad", "alle": [{ "pfadre": "^auto|autopflege|autoelektrik|kfz|zweirad|schmiermittel" }] },
+        { "id": "insekten", "name": "Insekten- & Pflanzenschutz", "alle": [{ "pfadre": "insekt|pflanzenschutz" }] },
+        { "id": "naehen", "name": "Nähen", "alle": [{ "pfadre": "nähen|naehen|nähzubehör|nähmaschine" }] },
         { "id": "garten", "name": "Garten, Pflanzen & Blumen", "alle": [{ "pfadre": "garten|pflanze|blume" }] },
-        { "id": "kueche", "name": "Küche & Haushaltswaren", "alle": [{ "pfadre": "küche|kueche|kochgeschirr|haushaltswaren|haushaltsartikel|gedeckter tisch|geschirr" }] },
+        { "id": "kueche", "name": "Küche, Kochen & Tisch", "alle": [{ "pfadre": "küche|kueche|kochgeschirr|kochen|backutensil|backformen|tischkultur|bestecke|glaswaren|porzellan|einkochen|trinkflaschen|isolierflaschen|haushaltswaren|haushaltsartikel|gedeckter tisch|geschirr|messer" }] },
         { "id": "haushalt-sonst", "name": "Sonstiger Haushalt", "alle": [{ "pfadre": "haushalt|büro|buero" }] }
-      ]
-    },
-    {
-      "id": "nonfood", "name": "Spielzeug, Mode & Non-Food", "pos": 170,
-      "unter": [
-        { "id": "spielzeug", "name": "Spielzeug & Spiele", "alle": [{ "pfadre": "spielzeug|spielware|spiele|basteln|handarbeit|malen" }] },
-        { "id": "mode", "name": "Mode, Schuhe & Textilien", "alle": [{ "pfadre": "^mode|mode &|herrenmode|damenmode|kindermode|textil|bekleidung|schuhe|bettwäsche|socken" }] },
-        { "id": "technik", "name": "Elektronik & Technik", "alle": [{ "pfadre": "elektronik|multimedia|technik|computer|handy|elektrogeräte|elektrogeraete" }] },
-        { "id": "wohnen", "name": "Wohnen, Deko & Beleuchtung", "alle": [{ "pfadre": "wohnen|einrichtung|dekoration|beleuchtung|möbel|moebel" }] },
-        { "id": "freizeit", "name": "Sport, Freizeit & Reise", "alle": [{ "pfadre": "sport & freizeit|freizeit|reise|camping|fahrrad|outdoor|sportartikel" }] },
-        { "id": "nonfood-sonst", "name": "Sonstiges Non-Food", "alle": [{ "pfadre": "non-food|nonfood|bürobedarf|buerobedarf|bücher|buecher|zeitschrift" }] }
       ]
     },
     {
