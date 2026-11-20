@@ -215,14 +215,33 @@ function lade(name) {
     if (WARTET[name]) { WARTET[name].push(ok); return; }
     WARTET[name] = [ok];
     var s = document.createElement('script');
-    s.src = 'daten/' + name + '.js?v=' + (window.PT_VERSION || '');
+    s.src = 'daten/' + name + '.js?v=' + (name === 'index' ? Date.now() : encodeURIComponent(window.PT_VERSION || ''));
     s.onerror = function () { delete WARTET[name]; fehler(new Error(name)); };
     document.head.appendChild(s);
   });
 }
 
+// Neue Daten erkennen: index.js frisch (ohne Cache) laden und den Stand vergleichen
+function pruefeStand(beiNeu) {
+  var vorher = window.PT_LADE;
+  window.PT_LADE = function (name, daten) {
+    if (name === 'index') { window.PT_LADE = vorher; beiNeu(daten); return; }
+    vorher(name, daten);
+  };
+  var s = document.createElement('script');
+  s.src = 'daten/index.js?t=' + Date.now();
+  s.onerror = function () { window.PT_LADE = vorher; s.remove(); };
+  s.onload = function () { s.remove(); };
+  document.head.appendChild(s);
+}
+
 lade('index').then(start, function () {
-  $('meldung').innerHTML = '<div class="hinweis">Keine Daten gefunden. Bitte zuerst <code>abrufen.ps1</code> ausführen.</div>';
+  var ohne = location.protocol === 'file:'
+    ? 'Keine Daten gefunden. Bitte zuerst <code>abrufen.ps1</code> ausführen.'
+    : 'Noch keine Preisdaten vorhanden – der Abruf läuft. Die Seite lädt sie automatisch, sobald sie da sind.';
+  $('meldung').innerHTML = '<div class="hinweis">' + ohne + '</div>';
+  // Ohne Daten: jede Minute nachsehen und dann neu laden
+  if (location.protocol !== 'file:') setInterval(function () { pruefeStand(function () { location.reload(); }); }, 60000);
 });
 
 function start(D) {
@@ -744,6 +763,26 @@ zeichne();
 lade('angebote').then(function (l) { ANGEBOTE = merkeVoll(l); zeichne(); return ladeSuche(); }).then(function () { zeichne(); });
 // Schnittstelle fuer Erweiterungen (Einkaeufe/Rechnungen)
 window.PT = { D: D, POOL: POOL, ladeSuche: ladeSuche, SUCHE_ID: SUCHE_ID, oeffne: oeffne, euro: euro, datum: datum, tag: tag };
+
+// Alle 5 Minuten (und beim Zurueckkehren in den Tab) nach neuem Datenstand sehen und dann neu laden.
+// Ist gerade ein Artikel-Detail offen, erst einen Hinweis zeigen statt die Seite unter den Fingern zu wechseln.
+var letztePruefung = Date.now();
+function neueDatenDa(neu) {
+  if (!neu || neu.stand === D.stand) return;
+  if (!document.body.classList.contains('offen')) { location.reload(); return; }
+  if ($('neu-hinweis')) return;
+  var h = document.createElement('div');
+  h.id = 'neu-hinweis'; h.className = 'hinweis';
+  h.innerHTML = 'Neue Preise verfügbar (Stand ' + new Date(neu.stand).toLocaleString('de-AT', { dateStyle: 'short', timeStyle: 'short' }) + '). <button class="knopf-leise">Jetzt laden</button>';
+  h.querySelector('button').onclick = function () { location.reload(); };
+  $('meldung').prepend(h);
+}
+if (location.protocol !== 'file:') {
+  setInterval(function () { letztePruefung = Date.now(); pruefeStand(neueDatenDa); }, 5 * 60000);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && Date.now() - letztePruefung > 60000) { letztePruefung = Date.now(); pruefeStand(neueDatenDa); }
+  });
+}
 }
 })();
 </script>
