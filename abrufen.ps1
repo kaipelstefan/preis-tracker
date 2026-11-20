@@ -114,6 +114,7 @@ function Rewe-Satz($Markt, $UrlBasis, $p, $Kat) {
         normal = $normal; aktion = $aktion; at = $atext
         u = "$UrlBasis/produkte/$($p.slug)"
         b = $(if ($p.images) { @($p.images)[0] } else { $null })
+        hs = $(if ($p.brand -and $p.brand.name) { [string]$p.brand.name } else { $null })
     }
 }
 
@@ -156,6 +157,7 @@ function Spar-Satz($h) {
         normal = $normal; aktion = $aktion; at = $atext
         u = "https://www.spar.at/produktwelt/$($mv.slug)"
         b = $(if ($mv.productImage_assetUrl) { $mv.productImage_assetUrl.Replace('{size}', '500').Replace('{ext}', 'jpg') } else { $null })
+        hs = $(if ($mv.name1) { [string]$mv.name1 } else { $null })
     }
 }
 
@@ -200,6 +202,7 @@ function Lidl-Satz($i) {
         normal = $normal; aktion = $aktion; at = $atext
         u = "https://www.lidl.at$($d.canonicalUrl)"
         b = $(if ($d.image) { [string]$d.image } else { $null })
+        hs = $(if ($d.brand -and $d.brand.name) { [string]$d.brand.name } else { $null })
         av = $von; ab = $bis; vs = [bool]($von -and $von -gt $Heute)
     }
 }
@@ -239,7 +242,7 @@ function Hofer-Satz($p) {
         g = $g; q = (Runde $m.q); e = $m.e
         normal = $normal; aktion = $aktion; at = $atext
         u = "https://www.hofer.at/produkt/$($p.urlSlugText)-$($p.sku)"
-        b = $bild
+        b = $bild; hs = $(if ($p.brandName) { [string]$p.brandName } else { $null })
         # Hofer nennt nur den Start ("Verfuegbar seit/ab"); Ende: solange der Vorrat reicht
         av = $(if ($p.onSaleDate) { ([string]$p.onSaleDate).Substring(0, 10) } else { $null }); ab = $null
         vs = [bool]($p.onSaleDate -and ([string]$p.onSaleDate).Substring(0, 10) -gt $Heute)
@@ -299,7 +302,7 @@ function Hole-TchiboArtikel {
             g = ''; q = (Runde $q); e = $e
             normal = $normal; aktion = $aktion; at = $(if ($aktion) { 'Aktion' } else { $null })
             u = 'https://www.tchibo.at' + [string]$url
-            b = $bild
+            b = $bild; hs = 'Tchibo'
         }
         [void]$liste.Add(@{ s = $s; namen = @('Alle') })
     }
@@ -660,7 +663,7 @@ $fehler += $script:Teilfehler
 if ($neu.Count -eq 0) { throw 'Kein einziger Artikel geladen - Abbruch, Historie bleibt unveraendert.' }
 
 # ---------------------------------------------------------------- Historie fortschreiben
-# Eintrag: m Markt, n Name, k Kategorie, g Packung (Text), q Menge, e Einheit, u Link, b Bild,
+# Eintrag: m Markt, n Name, k Kategorie, g Packung (Text), q Menge, e Einheit, u Link, b Bild, hs Hersteller/Marke,
 #          a zuerst gesehen, z zuletzt gesehen, p Preispunkte [Datum, Normalpreis, Aktionspreis|null, Menge, Aktionstext|null]
 $hist = [ordered]@{}
 if (Test-Path $HistDatei) {
@@ -669,7 +672,7 @@ if (Test-Path $HistDatei) {
         $o = $eig.Value
         $punkte = New-Object Collections.ArrayList
         foreach ($pt in @($o.p)) { [void]$punkte.Add(@($pt)) }
-        $hist[$eig.Name] = [ordered]@{ m = $o.m; n = $o.n; k = $o.k; uk = $o.uk; g = $o.g; q = $o.q; e = $o.e; u = $o.u; b = $o.b; a = $o.a; z = $o.z; av = $o.av; ab = $o.ab; vp = $o.vp; p = $punkte }
+        $hist[$eig.Name] = [ordered]@{ m = $o.m; n = $o.n; k = $o.k; uk = $o.uk; g = $o.g; q = $o.q; e = $o.e; u = $o.u; b = $o.b; hs = $o.hs; a = $o.a; z = $o.z; av = $o.av; ab = $o.ab; vp = $o.vp; p = $punkte }
     }
 }
 
@@ -681,11 +684,11 @@ foreach ($s in $neu.Values) {
     $punkt = @($Heute, (Runde $s.normal), (Runde $aktionHeute), $s.q, $(if ($aktionHeute) { $s.at } else { $null }))
     $av = $s.av; $ab = $s.ab; $vp = $(if ($vorschau) { Runde $s.aktion } else { $null })
     if (-not $hist.Contains($s.key)) {
-        $hist[$s.key] = [ordered]@{ m = $s.m; n = $s.n; k = $s.k; uk = $s.uk; g = $s.g; q = $s.q; e = $s.e; u = $s.u; b = $s.b; a = $Heute; z = $Heute; av = $av; ab = $ab; vp = $vp; p = (New-Object Collections.ArrayList) }
+        $hist[$s.key] = [ordered]@{ m = $s.m; n = $s.n; k = $s.k; uk = $s.uk; g = $s.g; q = $s.q; e = $s.e; u = $s.u; b = $s.b; hs = $s.hs; a = $Heute; z = $Heute; av = $av; ab = $ab; vp = $vp; p = (New-Object Collections.ArrayList) }
         [void]$hist[$s.key].p.Add($punkt); $neueArtikel++; continue
     }
     $h = $hist[$s.key]
-    $h.n = $s.n; $h.k = $s.k; $h.uk = $s.uk; $h.g = $s.g; $h.q = $s.q; $h.e = $s.e; $h.u = $s.u; $h.b = $s.b; $h.z = $Heute
+    $h.n = $s.n; $h.k = $s.k; $h.uk = $s.uk; $h.g = $s.g; $h.q = $s.q; $h.e = $s.e; $h.u = $s.u; $h.b = $s.b; if ($s.hs) { $h.hs = $s.hs }; $h.z = $Heute
     $h.av = $av; $h.ab = $ab; $h.vp = $vp
     $letzt = $h.p[$h.p.Count - 1]
     $gleich = ([double]$letzt[1] -eq [double]$punkt[1]) -and ("$($letzt[2])" -eq "$($punkt[2])") -and ([double]$letzt[3] -eq [double]$punkt[3])
@@ -728,7 +731,7 @@ Write-Host ("Historie: {0} Artikel, {1} neu, {2} Preisaenderungen" -f $hist.Coun
 # ---------------------------------------------------------------- Dateien fuer die Seite (site/daten/)
 # index.js     Uebersicht: Stand, Maerkte, Kategorien mit Anzahl, Schwellen, Tipps
 # angebote.js  alle Artikel mit laufender oder kommender Aktion (inkl. Verlauf)
-# suche.js     kompakter Suchindex aller Artikel [id, Name, Markt, Kat, Unterkat, Preis, Aktionspreis, Menge, Einheit]
+# suche.js     kompakter Suchindex aller Artikel [id, Name, Markt, Kat, Unterkat, Preis, Aktionspreis, Menge, Einheit, Hersteller]
 # kat-<id>.js  alle Artikel einer Kategorie (inkl. Verlauf)
 # Format: PT_LADE("<name>", <daten>); - funktioniert auch direkt von der Festplatte (file://)
 $ausOrdner = Join-Path (Join-Path $Ordner 'site') 'daten'
@@ -755,7 +758,7 @@ foreach ($key in $hist.Keys) {
     $lp = $h.p[$h.p.Count - 1]
     $inAktion = ($null -ne $lp[2]) -and ($h.z -eq $Heute)
     if ($inAktion -or $h.vp) { $angebote.Add($aj); $anzahlAkt[$k] = 1 + [int]$anzahlAkt[$k]; $anzahlAktUk[$ukKey] = 1 + [int]$anzahlAktUk[$ukKey] }
-    $suche.Add((ConvertTo-Json -InputObject @($key, $h.n, $h.m, $k, $h.uk, $lp[1], $lp[2], $h.q, $h.e) -Compress))
+    $suche.Add((ConvertTo-Json -InputObject @($key, $h.n, $h.m, $k, $h.uk, $lp[1], $lp[2], $h.q, $h.e, $h.hs) -Compress))
 }
 $groesse = 0
 foreach ($k in $jeKat.Keys) { $groesse += Schreibe-Js "kat-$k" ('[' + ($jeKat[$k] -join ',') + ']') }

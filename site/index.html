@@ -91,6 +91,22 @@ main { min-width: 0; padding: 8px 0 40px; }
 .nav-alle .nav-eintrag { font-weight: 600; }
 .nav-trenn { height: 1px; background: var(--linie); margin: 4px 8px; }
 .nav-fuss { display: none; }
+/* Hersteller-Filter im Menue */
+.nav-marken { border-top: 1px solid var(--linie); margin-top: 8px; padding-top: 4px; }
+.nav-marken .nav-kopf .knopf-leise { font-weight: 500; }
+.nav-marken input[type=search] { width: calc(100% - 12px); margin: 0 6px 6px; border: 1px solid var(--linie); background: var(--bg); border-radius: 8px; padding: 7px 9px; font-size: 14px; }
+.marken-liste { list-style: none; margin: 0; padding: 0; }
+.marke { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.marke:hover { background: var(--neutral-bg); }
+.marke input { margin: 0; width: 16px; height: 16px; accent-color: var(--akzent); flex: 0 0 auto; }
+.marke .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.marke .zahl { color: var(--leise); font-size: 12px; font-variant-numeric: tabular-nums; }
+.marke.leer { opacity: .5; }
+.meta .hs { font-weight: 600; color: var(--text); }
+.marke-nichts { color: var(--leise); font-size: 13px; padding: 6px 10px; }
+#marken-mehr { margin: 2px 4px 6px; }
+.marke-chip { display: inline-flex; align-items: center; gap: 2px; background: color-mix(in srgb, var(--akzent) 14%, transparent); color: var(--akzent); border-radius: 999px; padding: 1px 4px 1px 10px; font-weight: 600; margin-left: 6px; }
+.marke-chip button { border: 0; background: none; color: inherit; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
 .kat-knopf { display: none; }
 .nav-schleier { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 14; opacity: 0; pointer-events: none; transition: opacity .2s; }
 @media (min-width: 1000px) { .unter { display: none !important; } }
@@ -241,7 +257,15 @@ code { background: var(--bg); padding: 1px 4px; border-radius: 4px; font-size: 1
 <div class="rahmen">
 <nav class="katnav" id="katnav" aria-label="Kategorien">
   <div class="nav-kopf"><span>Kategorien <small id="nav-info"></small></span><button class="nav-zu" id="nav-zu" aria-label="Menü schließen">×</button></div>
-  <div class="nav-inhalt" id="nav-inhalt"></div>
+  <div class="nav-inhalt" id="nav-inhalt">
+    <div id="nav-kats"></div>
+    <section class="nav-marken" id="nav-marken" hidden>
+      <div class="nav-kopf"><span>Hersteller <small id="marken-info"></small></span><button class="knopf-leise" id="marken-weg" hidden>Zurücksetzen</button></div>
+      <input type="search" id="marken-suche" placeholder="Hersteller suchen …" aria-label="Hersteller suchen" autocomplete="off">
+      <ul class="marken-liste" id="marken-liste"></ul>
+      <button class="knopf-leise" id="marken-mehr" hidden></button>
+    </section>
+  </div>
   <div class="nav-fuss"><button id="nav-zeigen">Artikel anzeigen</button></div>
 </nav>
 <main>
@@ -315,6 +339,8 @@ var FLUGBLATT = {}; (D.flugblaetter || []).forEach(function (f) { if (!FLUGBLATT
 var KATNAME = {}, UKNAME = {}, UNTER = {}, KAT = {};
 D.kategorien.forEach(function (k) { KAT[k.id] = k; KATNAME[k.id] = k.name; UNTER[k.id] = k.unter || []; (k.unter || []).forEach(function (u) { UKNAME[k.id + '/' + u.id] = u.name; }); });
 function katText(a) { return UKNAME[a.k + '/' + a.uk] || KATNAME[a.k] || ''; }
+// Hersteller zeigen, wenn er nicht ohnehin im Namen steht (z. B. bei Penny)
+function markeHtml(a) { var s = markeSauber(a.hs); return s && s !== '-' && a.n.toLowerCase().indexOf(s.toLowerCase()) < 0 ? '<span class="hs">' + esc(s) + '</span>' : ''; }
 
 // ------------------------------------------------------------------ Hilfen
 var TAG = 86400000;
@@ -454,9 +480,14 @@ function ladeSuche() {
   if (SUCHE) return Promise.resolve(SUCHE);
   return lade('suche').then(function (l) { SUCHE = l; l.forEach(function (z) { SUCHE_ID[z[0]] = z; }); return l; });
 }
+var KOMP = {};                 // id -> Kurz-Artikel aus dem Suchindex (Zwischenspeicher)
+// Hersteller: Schreibweisen zusammenfassen (z. B. "COCA-COLA" und "Coca-Cola")
+function markeSauber(hs) { return hs ? String(hs).replace(/[*®™©]/g, '').replace(/\s+/g, ' ').trim() : ''; }
+function mk(hs) { var s = markeSauber(hs).toLowerCase(); return s && s !== '-' ? s : '-'; }
+var MARKE_NAME = { '-': 'ohne Angabe' };
 function kompakt(z) {
   // Indexzeile [id, Name, Markt, Kat, Unterkat, Preis, Aktionspreis, Menge, Einheit] -> Kurz-Artikel
-  return POOL[z[0]] || auswerten({ id: z[0], n: z[1], m: z[2], k: z[3], uk: z[4], q: z[7], e: z[8], a: D.heute, z: D.heute, p: [[D.heute, z[5], z[6], z[7], null]], _kompakt: true });
+  return POOL[z[0]] || KOMP[z[0]] || (KOMP[z[0]] = auswerten({ id: z[0], n: z[1], m: z[2], k: z[3], uk: z[4], q: z[7], e: z[8], hs: z[9], a: D.heute, z: D.heute, p: [[D.heute, z[5], z[6], z[7], null]], _kompakt: true }));
 }
 
 // ------------------------------------------------------------------ Ausblenden und Favoriten (lokal im Browser)
@@ -473,7 +504,7 @@ function schalteFav(id) {
 function sternHtml(id) { var an = favoriten.has(id); return '<button class="stern" data-fav="' + esc(id) + '" aria-pressed="' + an + '" aria-label="' + (an ? 'Aus Favoriten entfernen' : 'Als Favorit merken') + '" title="' + (an ? 'Aus Favoriten entfernen' : 'Als Favorit merken') + '">' + (an ? '★' : '☆') + '</button>'; }
 
 // ------------------------------------------------------------------ Zustand / Filter
-var Z = { reiter: 'angebote', maerkte: new Set(D.maerkte.map(function (m) { return m.id; })), kategorie: '', unter: '', bewertung: '', sort: '', suche: '', zeigeAus: false, nurFav: false, ansicht: 'liste', limit: 100 };
+var Z = { reiter: 'angebote', maerkte: new Set(D.maerkte.map(function (m) { return m.id; })), kategorie: '', unter: '', bewertung: '', sort: '', suche: '', zeigeAus: false, nurFav: false, ansicht: 'liste', limit: 100, marken: new Set() };
 try { var ans = localStorage.getItem('preis-tracker-ansicht'); if (ans === 'kacheln' || ans === 'liste') Z.ansicht = ans; } catch (e) {}
 try { var gespeichert = JSON.parse(localStorage.getItem('preis-tracker-filter') || 'null'); if (gespeichert) { Z.reiter = gespeichert.reiter || Z.reiter; Z.kategorie = KAT[gespeichert.kategorie] ? gespeichert.kategorie : ''; Z.unter = gespeichert.unter || ''; Z.nurFav = !!gespeichert.nurFav; if (gespeichert.maerkteAus && gespeichert.maerkteAus.length) { gespeichert.maerkteAus.forEach(function (m) { Z.maerkte.delete(m); }); if (!Z.maerkte.size) Z.maerkte = new Set(D.maerkte.map(function (m) { return m.id; })); } } } catch (e) {}
 function merke() { try { localStorage.setItem('preis-tracker-filter', JSON.stringify({ reiter: Z.reiter, kategorie: Z.kategorie, unter: Z.unter, nurFav: Z.nurFav, maerkteAus: D.maerkte.map(function (m) { return m.id; }).filter(function (m) { return !Z.maerkte.has(m); }) })); } catch (e) {} }
@@ -514,21 +545,23 @@ function bestand(reiter) {
     var l = []; favoriten.forEach(function (id) { if (POOL[id]) l.push(POOL[id]); });
     return l;
   }
-  if (Z.suche.trim().length >= 2) {
+  if (Z.suche.trim().length >= 2 || Z.marken.size) {
     if (!SUCHE) { ladeHinweis = 'Suchindex wird geladen …'; ladeSuche().then(zeichne); return null; }
     return SUCHE.map(kompakt);
   }
   return 'uebersicht';
 }
 
-function gefiltert(ohneUnter, reiter) {
+function gefiltert(ohneUnter, reiter, ohneMarke) {
   reiter = reiter || Z.reiter;
   var basis = bestand(reiter);
   if (!basis || basis === 'uebersicht') return basis;
   var nurAngebote = reiter === 'angebote', bald = Z.bewertung === 'demnaechst';
   var q = Z.suche.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  var mf = !ohneMarke && Z.marken.size;
   return basis.filter(function (r) {
     if (!Z.maerkte.has(r.a.m)) return false;
+    if (mf && !Z.marken.has(mk(r.a.hs))) return false;
     if (Z.kategorie && r.a.k !== Z.kategorie) return false;
     if (!ohneUnter && Z.kategorie && Z.unter && r.a.uk !== Z.unter) return false;
     return passtOhneKat(r, nurAngebote, bald, q);
@@ -555,11 +588,12 @@ function navZahlen() {
   if (Z.reiter === 'angebote') {
     if (!ANGEBOTE) return null;
     var bald = Z.bewertung === 'demnaechst';
-    ANGEBOTE.forEach(function (r) { if (Z.maerkte.has(r.a.m) && passtOhneKat(r, true, bald, q)) zaehle(r.a.k, r.a.uk); });
+    ANGEBOTE.forEach(function (r) { if (Z.maerkte.has(r.a.m) && (!Z.marken.size || Z.marken.has(mk(r.a.hs))) && passtOhneKat(r, true, bald, q)) zaehle(r.a.k, r.a.uk); });
   } else {
     if (!SUCHE) return null;
     SUCHE.forEach(function (z) {
       if (!Z.maerkte.has(z[2])) return;
+      if (Z.marken.size && !Z.marken.has(mk(z[9]))) return;
       if (!Z.zeigeAus && ausgeblendet.has(z[0])) return;
       if (Z.nurFav && !favoriten.has(z[0])) return;
       if (q.length) { var n = z[1].toLowerCase(); for (var i = 0; i < q.length; i++) if (n.indexOf(q[i]) < 0) return; }
@@ -579,7 +613,7 @@ function zeichneNav() {
   D.kategorien.forEach(function (k) {
     if (!k.n) return;
     var n = kN(k), aktiv = Z.kategorie === k.id;
-    if (!n && !aktiv && nz && (Z.suche.trim() || Z.nurFav)) return;   // bei Suche/Favoriten nur Kategorien mit Treffern
+    if (!n && !aktiv && nz && (Z.suche.trim() || Z.nurFav || Z.marken.size)) return;   // bei Suche/Favoriten/Hersteller nur Kategorien mit Treffern
     var unter = (k.unter || []).filter(function (u) { var m = uN(k, u); return (m == null ? u.n : m) || (aktiv && Z.unter === u.id); });
     var offen = unter.length > 0 && (aktiv || NAV_OFFEN[k.id]);
     h += '<li class="nav-kat' + (offen ? ' offen' : '') + '"><div class="nav-zeile">' +
@@ -595,17 +629,60 @@ function zeichneNav() {
     }
     h += '</li>';
   });
-  $('nav-inhalt').innerHTML = h + '</ul>';
-  // Pfad ueber der Liste
+  $('nav-kats').innerHTML = h + '</ul>';
+  // Pfad ueber der Liste (+ gewaehlte Hersteller zum Entfernen)
   var pf = $('pfad');
-  pf.hidden = !Z.kategorie;
+  pf.hidden = !Z.kategorie && !Z.marken.size;
+  var t = '';
   if (Z.kategorie) {
-    var t = '<button data-nk="">' + (alle ? 'Alle Kategorien' : 'Alle Angebote') + '</button><span class="trenner">›</span>';
+    t = '<button data-nk="">' + (alle ? 'Alle Kategorien' : 'Alle Angebote') + '</button><span class="trenner">›</span>';
     t += Z.unter ? '<button data-nk="' + esc(Z.kategorie) + '">' + esc(KATNAME[Z.kategorie]) + '</button><span class="trenner">›</span><b>' + esc(UKNAME[Z.kategorie + '/' + Z.unter] || '') + '</b>' : '<b>' + esc(KATNAME[Z.kategorie]) + '</b>';
-    pf.innerHTML = t;
   }
+  Z.marken.forEach(function (m) { t += '<span class="marke-chip">' + esc(MARKE_NAME[m] || m) + '<button data-mk-weg="' + esc(m) + '" aria-label="Hersteller ' + esc(MARKE_NAME[m] || m) + ' entfernen">×</button></span>'; });
+  pf.innerHTML = t;
   $('kat-knopf-text').textContent = Z.kategorie ? ((Z.unter ? UKNAME[Z.kategorie + '/' + Z.unter] : KATNAME[Z.kategorie]) || 'Kategorien') : 'Kategorien';
   $('kat-knopf').setAttribute('aria-pressed', !!Z.kategorie);
+}
+// Hersteller-Filter: Zaehler aus allen Treffern ohne Herstellerfilter
+var MZ = null, MARKEN_Q = '', MARKEN_ALLE = false;
+function markenZahlen() {
+  var z = {};
+  function zaehle(hs) {
+    var k = mk(hs); z[k] = (z[k] || 0) + 1;
+    if (k === '-') return;
+    var alt = MARKE_NAME[k], s = markeSauber(hs);
+    if (!alt || (alt === alt.toUpperCase() && s !== s.toUpperCase())) MARKE_NAME[k] = s;
+  }
+  var b = gefiltert(false, null, true);
+  if (b === 'uebersicht') {
+    if (!SUCHE) return null;
+    SUCHE.forEach(function (r) { if (Z.maerkte.has(r[2]) && (Z.zeigeAus || !ausgeblendet.has(r[0]))) zaehle(r[9]); });
+  } else if (!b) return null;
+  else b.forEach(function (r) { zaehle(r.a.hs); });
+  return z;
+}
+function zeichneMarken(neu) {
+  if (neu) MZ = markenZahlen();
+  var box = $('nav-marken');
+  var keys = MZ ? Object.keys(MZ) : [];
+  Z.marken.forEach(function (m) { if (keys.indexOf(m) < 0) keys.push(m); });
+  box.hidden = !keys.length || (keys.length === 1 && keys[0] === '-');
+  if (box.hidden) return;
+  var q = MARKEN_Q.trim().toLowerCase();
+  keys.sort(function (a, b) {
+    return (Z.marken.has(b) - Z.marken.has(a)) || ((a === '-') - (b === '-')) || (((MZ && MZ[b]) || 0) - ((MZ && MZ[a]) || 0)) || (MARKE_NAME[a] || a).localeCompare(MARKE_NAME[b] || b, 'de');
+  });
+  var passend = keys.filter(function (k) { return !q || (MARKE_NAME[k] || k).toLowerCase().indexOf(q) >= 0; });
+  var grenze = (q || MARKEN_ALLE) ? 400 : Math.max(12, Z.marken.size);
+  $('marken-info').textContent = '· ' + zahlF.format(keys.length);
+  $('marken-liste').innerHTML = passend.slice(0, grenze).map(function (k) {
+    var n = (MZ && MZ[k]) || 0;
+    return '<li><label class="marke' + (n ? '' : ' leer') + '"><input type="checkbox" data-mk="' + esc(k) + '"' + (Z.marken.has(k) ? ' checked' : '') + '><span class="nm">' + esc(MARKE_NAME[k] || k) + '</span><span class="zahl">' + zahlF.format(n) + '</span></label></li>';
+  }).join('') + (passend.length ? '' : '<li class="marke-nichts">Kein Hersteller gefunden</li>');
+  var mehr = $('marken-mehr');
+  mehr.hidden = !!q || passend.length <= Math.max(12, Z.marken.size);
+  mehr.textContent = MARKEN_ALLE ? 'Weniger anzeigen' : 'Alle ' + zahlF.format(passend.length) + ' Hersteller anzeigen';
+  $('marken-weg').hidden = !Z.marken.size;
 }
 function navAuf(an) {
   document.body.classList.toggle('nav-offen', an);
@@ -638,7 +715,7 @@ function zeileHtml(r) {
   h += '<li class="zeile" data-id="' + esc(a.id) + '" tabindex="0">';
   h += bildHtml(a, 'bild', 'klein');
   h += '<div><div class="name">' + sternHtml(a.id) + esc(a.n) + '</div>';
-  h += '<div class="meta"><span class="markt m-' + a.m + '">' + esc(MARKTNAME[a.m] || a.m) + '</span><span>' + packung(r.q, a.e) + '</span><span>' + esc(katText(a)) + '</span>';
+  h += '<div class="meta"><span class="markt m-' + a.m + '">' + esc(MARKTNAME[a.m] || a.m) + '</span>' + markeHtml(a) + '<span>' + packung(r.q, a.e) + '</span><span>' + esc(katText(a)) + '</span>';
   if (r.inAktion && r.letzt.text) h += '<span>' + esc(r.letzt.text) + '</span>';
   if (ausgeblendet.has(a.id)) h += '<span>(ausgeblendet)</span>';
   h += '</div>' + zeitHtml(r, 'div') + '</div>';
@@ -667,7 +744,7 @@ function kachelHtml(r) {
   h += '<div class="kachel-preis"><b>' + euro(r.bezahlt) + '</b>' + (r.inAktion ? '<s>' + euro(r.normal) + '</s>' : '') + '</div>';
   if (!(a.e === 'stk' && r.q === 1)) h += '<div class="kachel-je">' + euro(r.einheitspreis) + ' / ' + einheit(a.e) + '</div>';
   h += '<div class="kachel-name">' + esc(a.n) + '</div>';
-  h += '<div class="meta"><span class="markt m-' + a.m + '">' + esc(MARKTNAME[a.m] || a.m) + '</span><span>' + packung(r.q, a.e) + '</span></div>';
+  h += '<div class="meta"><span class="markt m-' + a.m + '">' + esc(MARKTNAME[a.m] || a.m) + '</span>' + markeHtml(a) + '<span>' + packung(r.q, a.e) + '</span></div>';
   if (r.inAktion && r.letzt.text) h += '<div class="meta">' + esc(r.letzt.text) + '</div>';
   h += zeitHtml(r, 'div');
   var marken = markenHtml(r);
@@ -712,6 +789,7 @@ function favZahlen() {
 
 function zeichne() {
   if ($('einkaeufe') && !$('einkaeufe').hidden) return;   // Reiter "Einkaeufe" ist offen
+  zeichneMarken(true);
   zeichneNav();
   $('r-angebote').setAttribute('aria-selected', Z.reiter === 'angebote');
   $('r-alle').setAttribute('aria-selected', Z.reiter === 'alle');
@@ -723,7 +801,7 @@ function zeichne() {
   $('nur-fav').textContent = '★ Favoriten (' + fz.n + (fz.n ? ' · ' + fz.akt + ' in Aktion' : '') + ')';
   $('liste').className = 'liste' + (Z.ansicht === 'kacheln' ? ' kacheln' : '');
   Array.prototype.forEach.call(document.querySelectorAll('[data-ansicht]'), function (b) { b.setAttribute('aria-pressed', b.dataset.ansicht === Z.ansicht); });
-  var aktiv = (Z.maerkte.size < D.maerkte.length ? 1 : 0) + (Z.kategorie ? 1 : 0) + (Z.kategorie && Z.unter ? 1 : 0) + (Z.bewertung ? 1 : 0) + (Z.suche ? 1 : 0) + (Z.nurFav ? 1 : 0);
+  var aktiv = (Z.maerkte.size < D.maerkte.length ? 1 : 0) + (Z.kategorie ? 1 : 0) + (Z.kategorie && Z.unter ? 1 : 0) + (Z.bewertung ? 1 : 0) + (Z.suche ? 1 : 0) + (Z.nurFav ? 1 : 0) + (Z.marken.size ? 1 : 0);
   $('zuruecksetzen').hidden = !aktiv;
   var tipps = (D.tipps || []).filter(function (t) { return !Z.kategorie || t.k === Z.kategorie; });
   $('tipps').hidden = Z.reiter !== 'angebote' || !tipps.length;
@@ -767,7 +845,7 @@ function zeichne() {
         (fz.akt ? ' <button class="knopf-leise" data-favwechsel="angebote">Nur die in Aktion zeigen</button>' : '') + '</div>';
   }
   else if (!l.length) meldung += '<div class="hinweis">Keine Artikel passen zu den Filtern. <button class="knopf-leise" data-reset>Filter zurücksetzen</button></div>';
-  if (Z.reiter === 'alle' && !Z.kategorie && Z.suche.trim().length >= 2) meldung += '<div class="hinweis">Suchergebnisse über alle Kategorien.</div>';
+  if (Z.reiter === 'alle' && !Z.kategorie && (Z.suche.trim().length >= 2 || Z.marken.size)) meldung += '<div class="hinweis">Suchergebnisse über alle Kategorien.</div>';
   $('meldung').innerHTML = meldung;
   var render = Z.ansicht === 'kacheln' ? kachelHtml : zeileHtml, html = '';
   l.slice(0, Z.limit).forEach(function (r, i) {
@@ -825,7 +903,7 @@ function oeffne(id) {
   h += '<button class="zu" id="zu" aria-label="Schließen">×</button>';
   if (a.b) h += bildHtml(a, 'bild-gross', 'gross');
   h += '<h2>' + esc(a.n) + '</h2>';
-  h += '<div class="meta" style="color:var(--leise);font-size:13px;display:flex;gap:8px;flex-wrap:wrap"><span class="markt m-' + a.m + '">' + esc(MARKTNAME[a.m]) + '</span><span>' + packung(r.q, a.e) + '</span><span>' + esc(katText(a)) + '</span><span>beobachtet seit ' + datum(tag(a.a)) + '</span></div>';
+  h += '<div class="meta" style="color:var(--leise);font-size:13px;display:flex;gap:8px;flex-wrap:wrap"><span class="markt m-' + a.m + '">' + esc(MARKTNAME[a.m]) + '</span>' + markeHtml(a) + '<span>' + packung(r.q, a.e) + '</span><span>' + esc(katText(a)) + '</span><span>beobachtet seit ' + datum(tag(a.a)) + '</span></div>';
   h += zeitHtml(r, 'p');
   h += '<div class="kennzahlen">';
   h += '<div class="kz"><span>' + (r.inAktion ? 'Aktionspreis' : 'Preis') + '</span><b>' + euro(r.bezahlt) + '</b><span>' + euro(r.einheitspreis) + ' / ' + e + '</span></div>';
@@ -869,16 +947,26 @@ $('maerkte').onclick = function (ev) {
 };
 function waehleKat(k, uk) { Z.kategorie = k; Z.unter = uk || ''; Z.limit = 100; if (k) NAV_OFFEN[k] = true; merke(); zeichne(); window.scrollTo({ top: 0 }); }
 function navKlick(ev) {
+  var weg = ev.target.closest('[data-mk-weg]');
+  if (weg) { Z.marken.delete(weg.dataset.mkWeg); Z.limit = 100; zeichne(); return; }
   var auf = ev.target.closest('[data-auf]');
   if (auf) { var id = auf.dataset.auf, li = auf.closest('.nav-kat'), an = !li.classList.contains('offen'); NAV_OFFEN[id] = an; li.classList.toggle('offen', an); auf.setAttribute('aria-expanded', an); return; }
   var b = ev.target.closest('[data-nk]'); if (!b) return;
   var k = b.dataset.nk, uk = b.dataset.nu || '';
   // Am Handy: Kategorie mit Unterkategorien antippen -> aufklappen, Menue bleibt offen; sonst Menue schliessen
-  var bleibtOffen = handy.matches && k && !uk && KAT[k] && (KAT[k].unter || []).length && ev.currentTarget === $('nav-inhalt') && !(Z.kategorie === k && !Z.unter);
+  var bleibtOffen = handy.matches && k && !uk && KAT[k] && (KAT[k].unter || []).length && ev.currentTarget === $('nav-kats') && !(Z.kategorie === k && !Z.unter);
   waehleKat(k, uk);
   if (handy.matches && !bleibtOffen) navAuf(false);
 }
-$('nav-inhalt').onclick = navKlick;
+$('nav-kats').onclick = navKlick;
+$('marken-liste').onchange = function (ev) {
+  var c = ev.target.closest('[data-mk]'); if (!c) return;
+  if (c.checked) Z.marken.add(c.dataset.mk); else Z.marken.delete(c.dataset.mk);
+  Z.limit = 100; zeichne();
+};
+$('marken-suche').oninput = function () { MARKEN_Q = this.value; zeichneMarken(false); };
+$('marken-mehr').onclick = function () { MARKEN_ALLE = !MARKEN_ALLE; zeichneMarken(false); };
+$('marken-weg').onclick = function () { Z.marken.clear(); Z.limit = 100; zeichne(); };
 $('pfad').onclick = navKlick;
 $('kat-knopf').onclick = function () { navAuf(!document.body.classList.contains('nav-offen')); };
 $('nav-zu').onclick = $('nav-schleier').onclick = $('nav-zeigen').onclick = function () { navAuf(false); };
@@ -898,7 +986,7 @@ Array.prototype.forEach.call(document.querySelectorAll('[data-ansicht]'), functi
   b.onclick = function () { Z.ansicht = b.dataset.ansicht; try { localStorage.setItem('preis-tracker-ansicht', Z.ansicht); } catch (e) {} zeichne(); };
 });
 $('nur-fav').onclick = function () { Z.nurFav = !Z.nurFav; Z.limit = 100; merke(); zeichne(); };
-function reset() { Z.maerkte = new Set(D.maerkte.map(function (m) { return m.id; })); Z.kategorie = ''; Z.unter = ''; Z.bewertung = ''; Z.suche = ''; Z.nurFav = false; $('suche').value = ''; merke(); zeichne(); }
+function reset() { Z.maerkte = new Set(D.maerkte.map(function (m) { return m.id; })); Z.kategorie = ''; Z.unter = ''; Z.bewertung = ''; Z.suche = ''; Z.nurFav = false; Z.marken.clear(); MARKEN_Q = ''; $('marken-suche').value = ''; $('suche').value = ''; merke(); zeichne(); }
 $('zuruecksetzen').onclick = reset;
 $('meldung').onclick = function (ev) {
   if (ev.target.closest('[data-reset]')) reset();
