@@ -11,6 +11,11 @@
     "nur_lokal": ["spar"]
   },
 
+  "flugblaetter": {
+    "_hinweis": "Gueltigkeitszeitraum der aktuellen Flugblaetter (wogibtswas.at, Marktseite /h/...). Gilt fuer Aktionen eines Marktes, fuer die der Shop selbst kein Ende nennt (derzeit Spar).",
+    "spar": ["https://www.wogibtswas.at/h/72819-spar"]
+  },
+
   "kategorien": [
     {
       "id": "alkohol", "pos": 85,

@@ -636,6 +636,26 @@ foreach ($markt in $Maerkte) {
     }
 }
 $tipps = @(Hole-Tipps)
+
+# Gueltigkeitszeitraum der aktuellen Flugblaetter (wogibtswas.at liefert SaleEvent mit startDate/endDate)
+$flugblaetter = New-Object Collections.ArrayList
+if ($Konfig.flugblaetter) {
+    foreach ($eig in $Konfig.flugblaetter.PSObject.Properties) {
+        if ($eig.Name -like '_*') { continue }
+        foreach ($url in @($eig.Value)) {
+            try {
+                $r = Invoke-WebRequest -Uri $url -UseBasicParsing -UserAgent $UA -TimeoutSec 60
+                $html = $Utf8.GetString($r.RawContentStream.ToArray())
+                foreach ($m in [regex]::Matches($html, '"@type":"SaleEvent","name":"(?<name>[^"]*)".*?"url":"(?<url>[^"]*)","startDate":"(?<von>\d{4}-\d{2}-\d{2})[^"]*","endDate":"(?<bis>\d{4}-\d{2}-\d{2})')) {
+                    $von = $m.Groups['von'].Value; $bis = $m.Groups['bis'].Value
+                    if ($von -gt $Heute -or $bis -lt $Heute) { continue }   # nur aktuell gueltige
+                    [void]$flugblaetter.Add([ordered]@{ m = $eig.Name; name = [regex]::Unescape($m.Groups['name'].Value); von = $von; bis = $bis; u = $m.Groups['url'].Value.Replace('\/', '/') })
+                }
+            } catch { Melde-Teilfehler "flugblatt:$($eig.Name)" $_ }
+        }
+    }
+    Write-Host ("Flugblaetter: {0} aktuell gueltig" -f $flugblaetter.Count)
+}
 $fehler += $script:Teilfehler
 if ($neu.Count -eq 0) { throw 'Kein einziger Artikel geladen - Abbruch, Historie bleibt unveraendert.' }
 
@@ -756,6 +776,7 @@ $index = [ordered]@{
     kategorien = $katListe
     auswertung = $Konfig.auswertung
     tipps      = $tipps
+    flugblaetter = $flugblaetter
     gesamt     = $suche.Count
     angebote   = $angebote.Count
 }

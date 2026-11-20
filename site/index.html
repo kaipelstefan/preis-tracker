@@ -253,6 +253,8 @@ var CFG = {
   erhTage: A.erhoehungVorAktionTage || 45, erhAb: A.erhoehungVorAktionAb || 3, dauer: A.dauerAktionAnteil || 50
 };
 var MARKTNAME = {}; D.maerkte.forEach(function (m) { MARKTNAME[m.id] = m.name; });
+// Aktuelles Flugblatt je Markt (wogibtswas.at): Enddatum fuer Aktionen ohne eigenes Ende (Spar)
+var FLUGBLATT = {}; (D.flugblaetter || []).forEach(function (f) { if (!FLUGBLATT[f.m] || f.bis > FLUGBLATT[f.m].bis) FLUGBLATT[f.m] = f; });
 var KATNAME = {}, UKNAME = {}, UNTER = {}, KAT = {};
 D.kategorien.forEach(function (k) { KAT[k.id] = k; KATNAME[k.id] = k.name; UNTER[k.id] = k.unter || []; (k.unter || []).forEach(function (u) { UKNAME[k.id + '/' + u.id] = u.name; }); });
 function katText(a) { return UKNAME[a.k + '/' + a.uk] || KATNAME[a.k] || ''; }
@@ -372,6 +374,8 @@ function zeitraum(r) {
   if (r.vorschau) return { text: 'Angebot ab ' + (r.av ? datumKurz(r.av) : 'demnächst') + ' für ' + euro(r.a.vp) + (r.ab ? ' (bis ' + datumKurz(r.ab) + ')' : ''), klasse: 'z-bald' };
   if (!r.inAktion) return null;
   if (r.ab != null) return { text: (r.av ? datumKurz(r.av) + ' – ' : 'bis ') + datumKurz(r.ab) + ' · ' + restText(r.ab), klasse: (r.ab - HEUTE_LOKAL) <= TAG ? 'z-knapp' : 'z-ok' };
+  var fb = FLUGBLATT[r.a.m];
+  if (fb && !r.kompakt) { var fbBis = tag(fb.bis); return { text: 'laut ' + (MARKTNAME[r.a.m] || '') + '-Flugblatt bis ' + datumKurz(fbBis) + ' · ' + restText(fbBis), klasse: (fbBis - HEUTE_LOKAL) <= TAG ? 'z-knapp' : 'z-ok' }; }
   if (r.av != null && r.a.m === 'hofer') return { text: 'seit ' + datumKurz(r.av) + ' · solange der Vorrat reicht', klasse: 'z-offen' };
   if (r.aktionSeit != null) return { text: (r.seitBeginn ? 'in Aktion seit mind. ' : 'in Aktion seit ') + datumKurz(r.aktionSeit) + ' · Ende vom Markt nicht angegeben', klasse: 'z-offen' };
   return null;
@@ -381,6 +385,7 @@ function zeitraum(r) {
 var POOL = {};                 // id -> ausgewerteter Artikel (voll)
 var ANGEBOTE = null;           // Liste der Angebote (voll)
 var KATDATEN = {};             // kat-id -> Liste (voll)
+var LAEDT = {};                // kat-id -> wird gerade geladen
 var SUCHE = null;              // kompakter Index aller Artikel
 var SUCHE_ID = {};             // id -> Indexzeile
 function merkeVoll(liste) { return liste.map(function (a) { var r = POOL[a.id]; if (!r) { r = auswerten(a); POOL[a.id] = r; } return r; }); }
@@ -631,7 +636,7 @@ function zeichne() {
         (fz.akt ? ' <button class="knopf-leise" data-favwechsel="angebote">Nur die in Aktion zeigen</button>' : '') + '</div>';
   }
   else if (!l.length) meldung += '<div class="hinweis">Keine Artikel passen zu den Filtern. <button class="knopf-leise" data-reset>Filter zurücksetzen</button></div>';
-  if (Z.reiter === 'alle' && !Z.kategorie && Z.suche.trim().length >= 2) meldung += '<div class="hinweis">Suchergebnisse über alle Kategorien – Details und Bild beim Antippen.</div>';
+  if (Z.reiter === 'alle' && !Z.kategorie && Z.suche.trim().length >= 2) meldung += '<div class="hinweis">Suchergebnisse über alle Kategorien.</div>';
   $('meldung').innerHTML = meldung;
   var render = Z.ansicht === 'kacheln' ? kachelHtml : zeileHtml, html = '';
   l.slice(0, Z.limit).forEach(function (r, i) {
@@ -642,6 +647,11 @@ function zeichne() {
     html += render(r);
   });
   $('liste').innerHTML = html;
+  // Suchtreffer aus dem kompakten Index: deren Kategorien nachladen (Bild, Verlauf, Aktionszeitraum)
+  var fehlKat = {};
+  l.slice(0, Z.limit).forEach(function (r) { if (r.kompakt && r.a.k && !KATDATEN[r.a.k] && !LAEDT[r.a.k]) fehlKat[r.a.k] = 1; });
+  var fk = Object.keys(fehlKat);
+  if (fk.length) Promise.all(fk.map(function (k) { LAEDT[k] = 1; return ladeKat(k); })).then(zeichne, function () {});
   $('mehr').hidden = l.length <= Z.limit;
   $('mehr').textContent = 'Weitere anzeigen (' + zahlF.format(l.length - Z.limit) + ')';
 }
