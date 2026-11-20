@@ -85,7 +85,7 @@ Geplante Adresse: https://preise.kaipel.at (passwortgeschützt, noch nicht einge
 ## Online (preise.kaipel.at, noch einzurichten)
 
 - **Repo öffentlich**, damit GitHub Actions kostenlos bleiben. Im Repo liegen nur Code, Konfiguration und Preisdaten. Rechnungen und Zugangsdaten sind nie darin, siehe `.gitignore`.
-- **`.github/workflows/abruf.yml`:** täglich 04:23 UTC, Laufzeit gut eine Stunde. Lädt `site/daten/` per FTP hoch und committet die Historie.
+- **`.github/workflows/abruf.yml`:** täglich 04:23 UTC, parallel aufgeteilt: ein Job für Billa, Penny, Hofer, Lidl und Tchibo, 8 Jobs für je ein Achtel von Spar (jeder auf eigenem Runner, also eigener IP-Adresse, damit die Spar-Drosselung nicht bremst), danach ein Job, der zusammenführt, die Historie fortschreibt, `site/daten/` per FTP hochlädt und die Historie committet. Fällt ein Teil aus, fehlt nur dieser für einen Tag. Gesamtdauer etwa 20–30 Minuten.
 - **`.github/workflows/deploy.yml`:** lädt `site/` mit PHP-API bei jeder Änderung hoch und erzeugt dabei `api/config.php` aus den Secrets. Den Passwortschutz (`.htpasswd` und `.htaccess`) schreibt der Server selbst über `passwort-setzen.ps1`. Bei World4You führte eine per FTP hochgeladene `.htaccess` zu HTTP 500.
 - **Secrets:**
   - `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`

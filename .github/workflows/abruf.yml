@@ -1,6 +1,10 @@
-# Holt einmal taeglich das Gesamtsortiment aller Maerkte, schreibt die Historie fort
-# und laedt die Daten-Dateien (site/daten/) auf den Webspace.
-# Oeffentliches Repo -> Actions-Minuten sind kostenlos (Spar allein dauert gut eine Stunde).
+# Holt einmal taeglich das Gesamtsortiment aller Maerkte - parallel aufgeteilt:
+#   andere          Billa, Penny, Hofer, Lidl, Tchibo (ca. 10 Minuten)
+#   spar (8 Teile)  je ein Achtel der Spar-Kategorien; jeder Teil laeuft auf eigenem Runner mit
+#                   eigener IP, die Spar-Drosselung (Cloudflare) bremst die Teile also nicht gegenseitig
+#   zusammenfuehren Rohdaten zusammenfuehren, Historie fortschreiben, Seite hochladen, Historie speichern.
+#                   Laeuft auch, wenn einzelne Teile ausfallen (diese Maerkte/Teile fehlen dann fuer einen Tag).
+# Oeffentliches Repo -> Actions-Minuten sind kostenlos.
 name: Preise abrufen
 
 on:
@@ -16,17 +20,60 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  abruf:
+  andere:
     # Erst aktiv, wenn die Repo-Variable AKTIV=ja gesetzt ist (nach Einrichtung von Webspace und Secrets)
     if: ${{ vars.AKTIV == 'ja' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - name: Billa, Penny, Hofer, Lidl, Tchibo abrufen
+        shell: pwsh
+        run: ./abrufen.ps1 -Maerkte billa,penny,hofer,lidl,tchibo -RohSchreiben roh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roh-andere
+          path: roh/
+          retention-days: 1
+
+  spar:
+    if: ${{ vars.AKTIV == 'ja' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        teil: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Spar Teil ${{ matrix.teil }} von 8 abrufen
+        shell: pwsh
+        run: ./abrufen.ps1 -Maerkte spar -SparTeil ${{ matrix.teil }} -SparTeile 8 -RohSchreiben roh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roh-spar-${{ matrix.teil }}
+          path: roh/
+          retention-days: 1
+
+  zusammenfuehren:
+    needs: [andere, spar]
+    if: ${{ always() && vars.AKTIV == 'ja' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
 
-      - name: Preise abrufen und Historie fortschreiben
+      - name: Rohdaten aller Teile holen
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: roh-*
+          path: roh
+          merge-multiple: true
+
+      - name: Zuordnen, Historie fortschreiben, Seiten-Dateien erzeugen
         shell: pwsh
-        run: ./abrufen.ps1
+        run: ./abrufen.ps1 -RohLesen roh -SparTeile 8
 
       - name: Daten per FTP hochladen
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5

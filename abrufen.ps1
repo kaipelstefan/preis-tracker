@@ -4,13 +4,21 @@
   und erzeugt site/daten.js fuer die Webseite.
 
   Aufruf:  powershell -ExecutionPolicy Bypass -File abrufen.ps1 [-Maerkte billa,spar]
+  Aufgeteilter Abruf (GitHub Actions, parallel):
+    abrufen.ps1 -Maerkte billa,penny -RohSchreiben roh              nur laden, Rohdaten nach roh\ schreiben
+    abrufen.ps1 -Maerkte spar -SparTeil 0 -SparTeile 8 -RohSchreiben roh   nur jede 8. Spar-Kategorie ab 0
+    abrufen.ps1 -RohLesen roh -SparTeile 8                           Rohdaten zusammenfuehren, Historie + Seite
   Laeuft unter Windows PowerShell 5.1 und PowerShell 7. Das Skript enthaelt bewusst keine
   Umlaute (5.1 liest Skripte als ANSI); Umlaute kommen nur aus den UTF-8-Dateien.
 #>
 param(
     [string[]]$Maerkte = @('billa', 'penny', 'hofer', 'lidl', 'tchibo', 'spar'),
     [int]$TageAnzeigen = 7,      # Artikel, die so lange nicht mehr gesehen wurden, fehlen auf der Seite
-    [int]$TageBehalten = 400     # ... und fliegen nach so vielen Tagen aus der Historie
+    [int]$TageBehalten = 400,    # ... und fliegen nach so vielen Tagen aus der Historie
+    [string]$RohSchreiben = '',  # Ordner: nur abrufen und Rohdaten je Markt dorthin schreiben, dann Ende
+    [string]$RohLesen = '',      # Ordner: statt abzurufen die Rohdaten von dort lesen
+    [int]$SparTeil = -1,         # nur diesen Teil der Spar-Kategorien abrufen (0 .. SparTeile-1)
+    [int]$SparTeile = 1          # in wie viele Teile Spar aufgeteilt ist
 )
 
 $ErrorActionPreference = 'Stop'
@@ -364,7 +372,7 @@ function Spar-Blaetter {
     if (Test-Path $cache) {
         $c = Lies-Json $cache
         $alter = ([DateTime]::ParseExact($Heute, 'yyyy-MM-dd', $Inv) - [DateTime]::ParseExact([string]$c.stand, 'yyyy-MM-dd', $Inv)).TotalDays
-        if ($alter -lt 7 -and @($c.blaetter).Count -gt 50) { return @($c.blaetter) }
+        if ($alter -lt 30 -and @($c.blaetter).Count -gt 50) { return @($c.blaetter) }
     }
     $kopf = @{ Origin = 'https://www.spar.at'; Referer = 'https://www.spar.at/' }
     $blaetter = New-Object Collections.ArrayList
@@ -388,6 +396,23 @@ function Hole-Alles([string]$Markt) {
     if ($script:Roh.ContainsKey($Markt)) { return $script:Roh[$Markt] }
     $liste = New-Object Collections.ArrayList
     $tab = @{}
+    if ($RohLesen) {
+        # Rohdaten aus parallelen Abrufen (roh-<markt>.json bzw. roh-spar-<teil>.json) zusammenfuehren
+        $dateien = @(Get-ChildItem -Path $RohLesen -Filter "roh-$Markt*.json" -File -Recurse -ErrorAction SilentlyContinue)
+        if (-not $dateien.Count) { throw "Keine Rohdaten fuer $Markt in $RohLesen" }
+        if ($Markt -eq 'spar' -and $dateien.Count -lt $SparTeile) { Melde-Teilfehler "spar: nur $($dateien.Count) von $SparTeile Teilen" ([pscustomobject]@{ Exception = [pscustomobject]@{ Message = 'Teil fehlt' } }) }
+        foreach ($f in $dateien) {
+            $daten = Lies-Json $f.FullName   # erst zuweisen: PS 5.1 liefert ein JSON-Array sonst als ein Objekt
+            foreach ($x in $daten) {
+                $s = [ordered]@{}
+                foreach ($p in $x.s.PSObject.Properties) { $s[$p.Name] = $p.Value }
+                Fuege-Hinzu $tab $liste $s @($x.namen)
+            }
+        }
+        Write-Host ("  {0}: {1} Artikel aus {2} Rohdatei(en)" -f $Markt, $liste.Count, $dateien.Count)
+        $script:Roh[$Markt] = $liste
+        return $liste
+    }
     switch ($Markt) {
         'billa' {
             $baum = Hole-Json 'https://shop.billa.at/api/product-discovery/categories/tree'
@@ -443,6 +468,8 @@ function Hole-Alles([string]$Markt) {
             $nr = 0
             foreach ($bl in $blaetter) {
                 $nr++
+                # Aufgeteilter Abruf: nur jede SparTeile-te Kategorie ab SparTeil
+                if ($SparTeil -ge 0 -and (($nr - 1) % $SparTeile) -ne $SparTeil) { continue }
                 try {
                     $seiten = 1
                     for ($seite = 1; $seite -le $seiten -and $seite -le 400; $seite++) {
@@ -552,6 +579,39 @@ function Hole-Tipps {
 
 # ---------------------------------------------------------------- Abruf
 $Maerkte = @($Maerkte | ForEach-Object { $_ -split '[,; ]+' } | Where-Object { $_ })   # "-File" liefert Listen als einen String
+
+# Nur abrufen und Rohdaten schreiben (Teil eines parallelen Abrufs); Zuordnung und Historie macht der Zusammenfuehr-Lauf
+if ($RohSchreiben) {
+    [void](New-Item -ItemType Directory -Force $RohSchreiben)
+    $fehlgeschlagen = 0
+    foreach ($markt in $Maerkte) {
+        Write-Host "Lade $markt ..."
+        try {
+            $l = Hole-Alles $markt
+            $name = if ($markt -eq 'spar' -and $SparTeil -ge 0) { "roh-spar-$SparTeil.json" } else { "roh-$markt.json" }
+            $zeilen = foreach ($x in $l) { ConvertTo-Json -InputObject ([ordered]@{ s = $x.s; namen = @($x.namen) }) -Compress -Depth 5 }
+            [IO.File]::WriteAllText((Join-Path $RohSchreiben $name), '[' + (@($zeilen) -join ",`n") + "]`n", $Utf8)
+            Write-Host ("  {0}: {1} Artikel -> {2}" -f $markt, $l.Count, $name)
+            $script:Roh.Remove($markt)
+        } catch {
+            Write-Warning "$markt fehlgeschlagen: $($_.Exception.Message)"
+            $fehlgeschlagen++
+        }
+    }
+    # Spar-Kategoriebaum mitgeben, damit der Zusammenfuehr-Lauf ihn im Repo aktualisieren kann
+    $baum = Join-Path (Join-Path $Ordner 'daten') 'spar-kategorien.json'
+    if ($Maerkte -contains 'spar' -and $SparTeil -le 0 -and (Test-Path $baum)) { Copy-Item $baum (Join-Path $RohSchreiben 'spar-kategorien.json') -Force }
+    if ($script:Teilfehler.Count) { Write-Warning ("Teilfehler: " + ($script:Teilfehler -join ', ')) }
+    if ($fehlgeschlagen -eq $Maerkte.Count) { throw 'Kein Markt geladen.' }
+    return
+}
+
+# Im Zusammenfuehr-Lauf den mitgelieferten Spar-Kategoriebaum uebernehmen
+if ($RohLesen) {
+    $baum = @(Get-ChildItem -Path $RohLesen -Filter 'spar-kategorien.json' -File -Recurse -ErrorAction SilentlyContinue) | Select-Object -First 1
+    if ($baum) { Copy-Item $baum.FullName (Join-Path (Join-Path $Ordner 'daten') 'spar-kategorien.json') -Force }
+}
+
 $neu = @{}
 $fehler = @()
 foreach ($markt in $Maerkte) {
