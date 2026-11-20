@@ -30,7 +30,7 @@ button, select, input { font: inherit; color: inherit; }
 a { color: var(--akzent); }
 
 header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--linie); }
-.kopf { max-width: 980px; margin: 0 auto; padding: 10px 16px 0; }
+.kopf { max-width: 1280px; margin: 0 auto; padding: 10px 16px 0; }
 .titel { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 h1 { font-size: 19px; margin: 0; }
 .stand { color: var(--leise); font-size: 13px; }
@@ -61,7 +61,55 @@ h1 { font-size: 19px; margin: 0; }
 .anzahl { color: var(--leise); font-size: 13px; }
 .knopf-leise { border: 0; background: none; color: var(--akzent); cursor: pointer; padding: 4px; font-size: 13px; }
 
-main { max-width: 980px; margin: 0 auto; padding: 8px 16px 40px; }
+main { min-width: 0; padding: 8px 0 40px; }
+/* Seitenaufbau: Kategorie-Menue links, Inhalt rechts */
+.rahmen { max-width: 1280px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; align-items: start; }
+.pfad { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 13px; color: var(--leise); margin: 4px 0 2px; }
+.pfad button { border: 0; background: none; padding: 2px 0; cursor: pointer; color: var(--akzent); font-size: 13px; }
+.pfad b { color: var(--text); font-weight: 600; }
+.pfad .trenner { opacity: .6; }
+.katnav { position: sticky; top: calc(var(--kopf-h, 0px) + 10px); margin-top: 10px; max-height: calc(100vh - var(--kopf-h, 0px) - 20px); overflow: auto; overscroll-behavior: contain;
+  background: var(--fl); border: 1px solid var(--linie); border-radius: 12px; padding: 6px; scrollbar-width: thin; }
+.nav-kopf { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px; font-weight: 700; font-size: 15px; }
+.nav-kopf small { font-weight: 500; color: var(--leise); font-size: 12px; }
+.nav-zu { display: none; border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--leise); padding: 0 4px; }
+.nav-baum, .nav-unter { list-style: none; margin: 0; padding: 0; }
+.nav-zeile { display: flex; align-items: stretch; border-radius: 8px; }
+.nav-eintrag { flex: 1; min-width: 0; width: 100%; display: flex; align-items: center; gap: 8px; border: 0; background: none; text-align: left; cursor: pointer; padding: 8px 10px; border-radius: 8px; font-size: 14px; color: var(--text); }
+.nav-eintrag span.nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-eintrag .zahl { color: var(--leise); font-size: 12px; font-variant-numeric: tabular-nums; }
+.nav-eintrag:hover, .nav-auf:hover { background: var(--neutral-bg); }
+.nav-eintrag[aria-current="page"] { background: color-mix(in srgb, var(--akzent) 14%, transparent); color: var(--akzent); font-weight: 600; }
+.nav-eintrag[aria-current="page"] .zahl { color: var(--akzent); }
+.nav-eintrag.leer { opacity: .45; }
+.nav-auf { flex: 0 0 34px; border: 0; background: none; cursor: pointer; border-radius: 8px; color: var(--leise); display: flex; align-items: center; justify-content: center; }
+.nav-auf svg { width: 14px; height: 14px; transition: transform .18s ease; }
+.nav-auf[aria-expanded="true"] svg { transform: rotate(90deg); }
+.nav-unter { margin: 2px 0 6px 14px; padding-left: 8px; border-left: 2px solid var(--linie); display: none; }
+.nav-kat.offen > .nav-unter { display: block; }
+.nav-unter .nav-eintrag { padding: 6px 10px; font-size: 13.5px; }
+.nav-alle .nav-eintrag { font-weight: 600; }
+.nav-trenn { height: 1px; background: var(--linie); margin: 4px 8px; }
+.nav-fuss { display: none; }
+.kat-knopf { display: none; }
+.nav-schleier { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 14; opacity: 0; pointer-events: none; transition: opacity .2s; }
+@media (min-width: 1000px) { .unter { display: none !important; } }
+@media (max-width: 999px) {
+  .rahmen { grid-template-columns: minmax(0, 1fr); }
+  .kat-knopf { display: inline-flex; align-items: center; gap: 6px; }
+  .kat-knopf[aria-pressed="true"] { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+  .katnav { position: fixed; z-index: 15; top: 0; left: 0; bottom: 0; margin: 0; width: min(340px, 88vw); max-height: none; border-radius: 0 14px 14px 0; border-left: 0;
+    padding: 6px 6px 0; transform: translateX(-105%); transition: transform .22s ease; box-shadow: 6px 0 24px rgba(0,0,0,.2); display: flex; flex-direction: column; overflow: hidden; }
+  .katnav .nav-inhalt { flex: 1; overflow: auto; overscroll-behavior: contain; }
+  .nav-offen .katnav { transform: none; }
+  .nav-offen .nav-schleier { opacity: 1; pointer-events: auto; }
+  .nav-zu { display: block; }
+  .nav-eintrag { padding: 11px 10px; font-size: 15px; }
+  .nav-unter .nav-eintrag { padding: 9px 10px; font-size: 14.5px; }
+  .nav-fuss { display: block; padding: 10px 4px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--linie); }
+  .nav-fuss button { width: 100%; border: 0; border-radius: 10px; background: var(--akzent); color: #fff; font-weight: 600; padding: 12px; cursor: pointer; font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { .katnav, .nav-schleier, .nav-auf svg { transition: none; } }
 .hinweis { background: var(--fl); border: 1px solid var(--linie); border-radius: 10px; padding: 10px 12px; color: var(--leise); font-size: 14px; margin: 8px 0; }
 .liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .zeile { background: var(--fl); border: 1px solid var(--linie); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 60px 1fr auto; gap: 4px 12px; cursor: pointer; align-items: start; }
@@ -168,7 +216,7 @@ code { background: var(--bg); padding: 1px 4px; border-radius: 4px; font-size: 1
     <div class="filter">
       <div class="chips" id="maerkte"></div>
       <button class="chip chip-fav" id="nur-fav" aria-pressed="false">★ Favoriten</button>
-      <select id="kategorie" aria-label="Kategorie"></select>
+      <button class="chip kat-knopf" id="kat-knopf" aria-controls="katnav" aria-expanded="false" aria-pressed="false">☰ <span id="kat-knopf-text">Kategorien</span></button>
       <select id="bewertung" aria-label="Bewertung">
         <option value="">Alle Bewertungen</option>
         <option value="echt">Echtes Angebot</option>
@@ -190,12 +238,21 @@ code { background: var(--bg); padding: 1px 4px; border-radius: 4px; font-size: 1
     <div class="unter" id="unter" hidden></div>
   </div>
 </header>
+<div class="rahmen">
+<nav class="katnav" id="katnav" aria-label="Kategorien">
+  <div class="nav-kopf"><span>Kategorien <small id="nav-info"></small></span><button class="nav-zu" id="nav-zu" aria-label="Menü schließen">×</button></div>
+  <div class="nav-inhalt" id="nav-inhalt"></div>
+  <div class="nav-fuss"><button id="nav-zeigen">Artikel anzeigen</button></div>
+</nav>
 <main>
+  <nav class="pfad" id="pfad" aria-label="Pfad" hidden></nav>
   <div id="meldung"></div>
   <details class="tipps" id="tipps" hidden><summary></summary><ul></ul></details>
   <ul class="liste" id="liste"></ul>
   <button class="mehr" id="mehr" hidden>Weitere anzeigen</button>
 </main>
+</div>
+<div class="nav-schleier" id="nav-schleier"></div>
 <div id="detail">
   <div class="schleier" id="schleier"></div>
   <div class="blatt" id="blatt" role="dialog" aria-modal="true"></div>
@@ -429,7 +486,6 @@ var RANG = { echt: 0, maessig: 1, neu: 2, lockvogel: 3 };
 
 $('stand').textContent = 'Stand ' + new Date(D.stand).toLocaleString('de-AT', { dateStyle: 'short', timeStyle: 'short' }) + ' · ' + zahlF.format(D.gesamt || 0) + ' Artikel' + (D.fehler && D.fehler.length ? ' · nicht geladen: ' + D.fehler.join(', ') : '');
 $('maerkte').innerHTML = D.maerkte.map(function (m) { return '<button class="chip" data-m="' + m.id + '">' + esc(m.name) + '</button>'; }).join('');
-$('kategorie').innerHTML = '<option value="">Alle Kategorien</option>' + D.kategorien.filter(function (k) { return k.n; }).map(function (k) { return '<option value="' + k.id + '">' + esc(k.name) + ' (' + zahlF.format(k.n) + ')</option>'; }).join('');
 
 function fuelleSortierung() {
   $('sortierung').innerHTML = SORT[Z.reiter].map(function (s) { return '<option value="' + s[0] + '">' + s[1] + '</option>'; }).join('');
@@ -475,15 +531,88 @@ function gefiltert(ohneUnter, reiter) {
     if (!Z.maerkte.has(r.a.m)) return false;
     if (Z.kategorie && r.a.k !== Z.kategorie) return false;
     if (!ohneUnter && Z.kategorie && Z.unter && r.a.uk !== Z.unter) return false;
-    if (!Z.zeigeAus && ausgeblendet.has(r.a.id)) return false;
-    if (Z.nurFav && !favoriten.has(r.a.id)) return false;
-    if (nurAngebote) { if (bald ? !r.vorschau : !r.inAktion) return false; }
-    if (Z.bewertung === 'flag') { if (!r.flags.length) return false; }
-    else if (Z.bewertung && !bald && r.bewertung !== Z.bewertung) return false;
-    if (q.length) { var n = r.a.n.toLowerCase(); for (var i = 0; i < q.length; i++) if (n.indexOf(q[i]) < 0) return false; }
-    return true;
+    return passtOhneKat(r, nurAngebote, bald, q);
   });
 }
+// alle Filter ausser Markt und Kategorie
+function passtOhneKat(r, nurAngebote, bald, q) {
+  if (!Z.zeigeAus && ausgeblendet.has(r.a.id)) return false;
+  if (Z.nurFav && !favoriten.has(r.a.id)) return false;
+  if (nurAngebote) { if (bald ? !r.vorschau : !r.inAktion) return false; }
+  if (Z.bewertung === 'flag') { if (!r.flags.length) return false; }
+  else if (Z.bewertung && !bald && r.bewertung !== Z.bewertung) return false;
+  if (q.length) { var n = r.a.n.toLowerCase(); for (var i = 0; i < q.length; i++) if (n.indexOf(q[i]) < 0) return false; }
+  return true;
+}
+
+// ------------------------------------------------------------------ Kategorie-Menue (links, am Handy ausklappbar)
+var NAV_OFFEN = {};   // manuell aufgeklappte Kategorien
+var PFEIL = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// Zaehler je Kategorie/Unterkategorie passend zu Reiter und Filtern (Markt, Favoriten, Suche, Bewertung)
+function navZahlen() {
+  var kz = {}, uz = {}, ges = 0, q = Z.suche.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  function zaehle(k, uk) { ges++; kz[k] = (kz[k] || 0) + 1; uz[k + '/' + uk] = (uz[k + '/' + uk] || 0) + 1; }
+  if (Z.reiter === 'angebote') {
+    if (!ANGEBOTE) return null;
+    var bald = Z.bewertung === 'demnaechst';
+    ANGEBOTE.forEach(function (r) { if (Z.maerkte.has(r.a.m) && passtOhneKat(r, true, bald, q)) zaehle(r.a.k, r.a.uk); });
+  } else {
+    if (!SUCHE) return null;
+    SUCHE.forEach(function (z) {
+      if (!Z.maerkte.has(z[2])) return;
+      if (!Z.zeigeAus && ausgeblendet.has(z[0])) return;
+      if (Z.nurFav && !favoriten.has(z[0])) return;
+      if (q.length) { var n = z[1].toLowerCase(); for (var i = 0; i < q.length; i++) if (n.indexOf(q[i]) < 0) return; }
+      zaehle(z[3], z[4]);
+    });
+  }
+  return { k: kz, u: uz, ges: ges };
+}
+function zeichneNav() {
+  var nz = navZahlen(), alle = Z.reiter === 'alle';
+  function zahl(n) { return n == null ? '' : '<span class="zahl">' + zahlF.format(n) + '</span>'; }
+  function kN(k) { return nz ? (nz.k[k.id] || 0) : (alle ? k.n : k.na); }
+  function uN(k, u) { return nz ? (nz.u[k.id + '/' + u.id] || 0) : (alle ? u.n : u.na); }
+  var gesamt = nz ? nz.ges : (alle ? D.gesamt : null);
+  $('nav-info').textContent = alle ? '· alle Artikel' : (Z.bewertung === 'demnaechst' ? '· kommende Angebote' : '· Angebote');
+  var h = '<ul class="nav-baum"><li class="nav-alle"><div class="nav-zeile"><button class="nav-eintrag" data-nk=""' + (!Z.kategorie ? ' aria-current="page"' : '') + '><span class="nm">' + (alle ? 'Alle Kategorien' : 'Alle Angebote') + '</span>' + zahl(gesamt) + '</button></div></li><li class="nav-trenn" role="separator"></li>';
+  D.kategorien.forEach(function (k) {
+    if (!k.n) return;
+    var n = kN(k), aktiv = Z.kategorie === k.id;
+    if (!n && !aktiv && nz && (Z.suche.trim() || Z.nurFav)) return;   // bei Suche/Favoriten nur Kategorien mit Treffern
+    var unter = (k.unter || []).filter(function (u) { var m = uN(k, u); return (m == null ? u.n : m) || (aktiv && Z.unter === u.id); });
+    var offen = unter.length > 0 && (aktiv || NAV_OFFEN[k.id]);
+    h += '<li class="nav-kat' + (offen ? ' offen' : '') + '"><div class="nav-zeile">' +
+      '<button class="nav-eintrag' + (n ? '' : ' leer') + '" data-nk="' + esc(k.id) + '"' + (aktiv && !Z.unter ? ' aria-current="page"' : '') + '><span class="nm">' + esc(k.name) + '</span>' + zahl(n) + '</button>' +
+      (unter.length ? '<button class="nav-auf" data-auf="' + esc(k.id) + '" aria-expanded="' + offen + '" aria-label="' + esc(k.name) + ' ' + (offen ? 'zuklappen' : 'aufklappen') + '">' + PFEIL + '</button>' : '') + '</div>';
+    if (unter.length) {
+      h += '<ul class="nav-unter">';
+      unter.forEach(function (u) {
+        var m = uN(k, u);
+        h += '<li><button class="nav-eintrag' + (m === 0 ? ' leer' : '') + '" data-nk="' + esc(k.id) + '" data-nu="' + esc(u.id) + '"' + (aktiv && Z.unter === u.id ? ' aria-current="page"' : '') + '><span class="nm">' + esc(u.name) + '</span>' + zahl(m) + '</button></li>';
+      });
+      h += '</ul>';
+    }
+    h += '</li>';
+  });
+  $('nav-inhalt').innerHTML = h + '</ul>';
+  // Pfad ueber der Liste
+  var pf = $('pfad');
+  pf.hidden = !Z.kategorie;
+  if (Z.kategorie) {
+    var t = '<button data-nk="">' + (alle ? 'Alle Kategorien' : 'Alle Angebote') + '</button><span class="trenner">›</span>';
+    t += Z.unter ? '<button data-nk="' + esc(Z.kategorie) + '">' + esc(KATNAME[Z.kategorie]) + '</button><span class="trenner">›</span><b>' + esc(UKNAME[Z.kategorie + '/' + Z.unter] || '') + '</b>' : '<b>' + esc(KATNAME[Z.kategorie]) + '</b>';
+    pf.innerHTML = t;
+  }
+  $('kat-knopf-text').textContent = Z.kategorie ? ((Z.unter ? UKNAME[Z.kategorie + '/' + Z.unter] : KATNAME[Z.kategorie]) || 'Kategorien') : 'Kategorien';
+  $('kat-knopf').setAttribute('aria-pressed', !!Z.kategorie);
+}
+function navAuf(an) {
+  document.body.classList.toggle('nav-offen', an);
+  $('kat-knopf').setAttribute('aria-expanded', an);
+  if (an) { var c = $('nav-inhalt'), a = c.querySelector('[aria-current="page"]'); c.scrollLeft = 0; if (a) c.scrollTop = Math.max(0, a.offsetTop - c.offsetTop - c.clientHeight / 3); }
+}
+var handy = window.matchMedia('(max-width: 999px)');
 
 function sortiere(l) {
   var by = {
@@ -583,10 +712,10 @@ function favZahlen() {
 
 function zeichne() {
   if ($('einkaeufe') && !$('einkaeufe').hidden) return;   // Reiter "Einkaeufe" ist offen
+  zeichneNav();
   $('r-angebote').setAttribute('aria-selected', Z.reiter === 'angebote');
   $('r-alle').setAttribute('aria-selected', Z.reiter === 'alle');
   Array.prototype.forEach.call($('maerkte').children, function (b) { b.setAttribute('aria-pressed', Z.maerkte.has(b.dataset.m)); });
-  $('kategorie').value = Z.kategorie;
   $('bewertung').value = Z.bewertung;
   $('bewertung').hidden = Z.reiter !== 'angebote';
   var fz = favZahlen();
@@ -612,6 +741,7 @@ function zeichne() {
   }
   if (l === 'uebersicht') {
     zeichneUnter(null);
+    $('nav-zeigen').textContent = 'Übersicht anzeigen';
     $('anzahl').textContent = zahlF.format(D.gesamt || 0) + ' Artikel in ' + D.kategorien.filter(function (k) { return k.n; }).length + ' Kategorien';
     $('meldung').innerHTML = '<div class="hinweis">Kategorie wählen oder oben suchen (ab 2 Zeichen, über alle Artikel).</div>';
     $('liste').className = 'liste katliste';
@@ -623,6 +753,7 @@ function zeichne() {
   if (gruppiert) l = l.filter(function (r) { return r.inAktion; }).concat(l.filter(function (r) { return !r.inAktion; }));
   zeichneUnter(Z.kategorie ? gefiltert(true) : null);
   $('anzahl').textContent = zahlF.format(l.length) + ' Artikel' + (aktiv ? ' · ' + aktiv + ' Filter aktiv' : '');
+  $('nav-zeigen').textContent = zahlF.format(l.length) + ' Artikel anzeigen';
   var meldung = '';
   if (Z.reiter === 'angebote' && ANGEBOTE && ANGEBOTE.length && !ANGEBOTE.some(function (r) { return r.genugDaten; }))
     meldung = '<div class="hinweis">Die Aufzeichnung läuft erst seit kurzem. Bewertet wird gegen den Median der letzten ' + CFG.tageMedian + ' Tage, sobald mindestens ' + CFG.minTage + ' Tage Verlauf vorliegen. Bis dahin steht nur der Rabatt laut Markt da.</div>';
@@ -736,8 +867,26 @@ $('maerkte').onclick = function (ev) {
   else if (Z.maerkte.has(m)) Z.maerkte.delete(m); else Z.maerkte.add(m);
   Z.limit = 100; merke(); zeichne();
 };
-function waehleKat(k) { Z.kategorie = k; Z.unter = ''; Z.limit = 100; $('kategorie').value = k; merke(); zeichne(); }
-$('kategorie').onchange = function () { waehleKat(this.value); };
+function waehleKat(k, uk) { Z.kategorie = k; Z.unter = uk || ''; Z.limit = 100; if (k) NAV_OFFEN[k] = true; merke(); zeichne(); window.scrollTo({ top: 0 }); }
+function navKlick(ev) {
+  var auf = ev.target.closest('[data-auf]');
+  if (auf) { var id = auf.dataset.auf, li = auf.closest('.nav-kat'), an = !li.classList.contains('offen'); NAV_OFFEN[id] = an; li.classList.toggle('offen', an); auf.setAttribute('aria-expanded', an); return; }
+  var b = ev.target.closest('[data-nk]'); if (!b) return;
+  var k = b.dataset.nk, uk = b.dataset.nu || '';
+  // Am Handy: Kategorie mit Unterkategorien antippen -> aufklappen, Menue bleibt offen; sonst Menue schliessen
+  var bleibtOffen = handy.matches && k && !uk && KAT[k] && (KAT[k].unter || []).length && ev.currentTarget === $('nav-inhalt') && !(Z.kategorie === k && !Z.unter);
+  waehleKat(k, uk);
+  if (handy.matches && !bleibtOffen) navAuf(false);
+}
+$('nav-inhalt').onclick = navKlick;
+$('pfad').onclick = navKlick;
+$('kat-knopf').onclick = function () { navAuf(!document.body.classList.contains('nav-offen')); };
+$('nav-zu').onclick = $('nav-schleier').onclick = $('nav-zeigen').onclick = function () { navAuf(false); };
+if (handy.addEventListener) handy.addEventListener('change', function () { navAuf(false); });
+// Hoehe des (sticky) Kopfbereichs fuer das Menue
+function kopfHoehe() { var hd = document.querySelector('header'); document.documentElement.style.setProperty('--kopf-h', (getComputedStyle(hd).position === 'sticky' ? hd.offsetHeight : 0) + 'px'); }
+kopfHoehe(); window.addEventListener('resize', kopfHoehe);
+if (window.ResizeObserver) new ResizeObserver(kopfHoehe).observe(document.querySelector('header'));
 $('unter').onclick = function (ev) {
   var b = ev.target.closest('[data-uk]'); if (!b || b.disabled) return;
   Z.unter = b.dataset.uk; Z.limit = 100; merke(); zeichne();
@@ -765,7 +914,7 @@ $('liste').onclick = function (ev) {
 };
 $('liste').onkeydown = function (ev) { if (ev.key === 'Enter') { var kk = ev.target.closest('[data-kat]'); if (kk) return waehleKat(kk.dataset.kat); var z = ev.target.closest('.zeile'); if (z && z.dataset.id) oeffne(z.dataset.id); } };
 $('schleier').onclick = schliesse;
-document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') schliesse(); });
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { schliesse(); navAuf(false); } });
 
 fuelleSortierung();
 zeichne();

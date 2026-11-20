@@ -742,7 +742,7 @@ function Schreibe-Js([string]$Name, [string]$Json) {
     return $text.Length
 }
 $jeKat = @{}; $angebote = New-Object Collections.Generic.List[string]; $suche = New-Object Collections.Generic.List[string]
-$anzahl = @{}; $anzahlUk = @{}; $anzahlAkt = @{}
+$anzahl = @{}; $anzahlUk = @{}; $anzahlAkt = @{}; $anzahlAktUk = @{}
 foreach ($key in $hist.Keys) {
     $h = $hist[$key]
     if ($h.z -lt $abAnzeige) { continue }
@@ -754,7 +754,7 @@ foreach ($key in $hist.Keys) {
     $ukKey = "$k/$($h.uk)"; $anzahlUk[$ukKey] = 1 + [int]$anzahlUk[$ukKey]
     $lp = $h.p[$h.p.Count - 1]
     $inAktion = ($null -ne $lp[2]) -and ($h.z -eq $Heute)
-    if ($inAktion -or $h.vp) { $angebote.Add($aj); $anzahlAkt[$k] = 1 + [int]$anzahlAkt[$k] }
+    if ($inAktion -or $h.vp) { $angebote.Add($aj); $anzahlAkt[$k] = 1 + [int]$anzahlAkt[$k]; $anzahlAktUk[$ukKey] = 1 + [int]$anzahlAktUk[$ukKey] }
     $suche.Add((ConvertTo-Json -InputObject @($key, $h.n, $h.m, $k, $h.uk, $lp[1], $lp[2], $h.q, $h.e) -Compress))
 }
 $groesse = 0
@@ -765,7 +765,7 @@ $groesse += Schreibe-Js 'suche' ('[' + ($suche -join ',') + ']')
 $katListe = New-Object Collections.ArrayList
 # Anzeigereihenfolge laut "pos" (Pruefreihenfolge bleibt die Reihenfolge in konfig.json)
 foreach ($kat in @($Konfig.kategorien | Sort-Object { if ($_.pos) { [int]$_.pos } else { 500 } })) {
-    $unter = @($kat.unter | ForEach-Object { [ordered]@{ id = $_.id; name = $_.name; n = [int]$anzahlUk["$($kat.id)/$($_.id)"] } })
+    $unter = @($kat.unter | ForEach-Object { [ordered]@{ id = $_.id; name = $_.name; n = [int]$anzahlUk["$($kat.id)/$($_.id)"]; na = [int]$anzahlAktUk["$($kat.id)/$($_.id)"] } })
     [void]$katListe.Add([ordered]@{ id = $kat.id; name = $kat.name; n = [int]$anzahl[$kat.id]; na = [int]$anzahlAkt[$kat.id]; unter = $unter })
 }
 $index = [ordered]@{

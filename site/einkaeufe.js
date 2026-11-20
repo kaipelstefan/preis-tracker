@@ -53,11 +53,13 @@ knopf.setAttribute('role', 'tab'); knopf.id = 'r-einkaeufe'; knopf.setAttribute(
 reiter.appendChild(knopf);
 var bereich = document.createElement('section');
 bereich.id = 'einkaeufe'; bereich.hidden = true;
+bereich.style.gridColumn = '1 / -1';
 document.querySelector('main').after(bereich);
 
 function zeige(an) {
   bereich.hidden = !an;
   document.querySelector('main').hidden = an;
+  if ($('katnav')) $('katnav').hidden = an;
   document.querySelector('.filter').hidden = an;
   $('unter').hidden = an || !$('unter').innerHTML;
   knopf.setAttribute('aria-selected', an);
