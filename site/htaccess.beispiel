@@ -1,22 +1,17 @@
 # Passwortschutz fuer die ganze Seite (preise.kaipel.at).
-# Wird beim Deploy als .htaccess hochgeladen; AuthUserFile muss der absolute Pfad auf dem
-# World4You-Webspace sein (steht im Kundenbereich bzw. phpinfo(): DOCUMENT_ROOT).
-# Die .htpasswd liegt am besten ausserhalb des Webroots; anlegen z. B. mit
-#   htpasswd -c .htpasswd stefan   oder ueber den Verzeichnisschutz im World4You-Kundenbereich.
+# Wird beim Deploy als .htaccess hochgeladen (nur wenn das Secret HTPASSWD_PFAD gesetzt ist).
+# Die .htpasswd legt passwort-setzen.ps1 an; Apache liefert .ht*-Dateien grundsaetzlich nicht aus.
 AuthType Basic
 AuthName "Preis-Tracker"
 AuthUserFile __HTPASSWD_PFAD__
 Require valid-user
 
-# .htpasswd und .htaccess nie ausliefern
-<Files ".ht*">
-    Require all denied
-</Files>
-
 # Daten nicht cachen, damit der taegliche Stand sofort sichtbar ist
-<FilesMatch "\.(js|html)$">
-    Header set Cache-Control "no-cache"
-</FilesMatch>
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|html)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>
 
 # Komprimierung (grosse Daten-Dateien)
 <IfModule mod_deflate.c>
