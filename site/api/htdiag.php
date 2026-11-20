@@ -45,6 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['htpasswd'])) file_put_contents($ordner . '/.htpasswd-test', (string)$_POST['htpasswd']);
     if (isset($_POST['kopie'])) copy(dirname(__DIR__) . '/.htpasswd', $ordner . '/.htpasswd-kopie');
     if (isset($_POST['loeschen'])) { @unlink($ordner . '/.htaccess'); }
+    if (isset($_POST['root'])) file_put_contents(dirname(__DIR__) . '/.htaccess', (string)$_POST['root']);
+    if (isset($_POST['rootloeschen'])) @unlink(dirname(__DIR__) . '/.htaccess');
     if (isset($_POST['hash'])) {
         $pw = (string)$_POST['hash'];
         $art = (string)($_POST['art'] ?? 'apr1');
