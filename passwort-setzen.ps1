@@ -28,7 +28,7 @@ if (-not $antwort.ok) { throw "Server: $($antwort.fehler)" }
 Write-Host "  .htpasswd: $($antwort.pfad)"
 
 Write-Host 'Hinterlege den Pfad in GitHub und starte den Deploy ...'
-$antwort.pfad | gh secret set HTPASSWD_PFAD -R kaipelstefan/preis-tracker
+gh secret set HTPASSWD_PFAD -R kaipelstefan/preis-tracker --body ([string]$antwort.pfad)
 gh workflow run deploy.yml -R kaipelstefan/preis-tracker --ref main
 
 $z.benutzer = $benutzer; $z.passwort = $pw
