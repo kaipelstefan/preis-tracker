@@ -3,6 +3,12 @@
 
   "_regeln": "Je Unterkategorie und Markt eine Liste von Regeln. Eine Regel ist entweder die Shop-Kategorie als Text (Billa: Slug aus der URL, Spar: ID aus spar.at/produktwelt/<id>) oder ein Objekt { kat, muster, ohne } bzw. bei Penny und Lidl { pfad, muster, ohne }. pfad ist ein Name aus dem Kategorie-Pfad des Shops; bei Lidl geht auch 'Marke:Parkside'. muster/ohne sind regulaere Ausdruecke auf den Artikelnamen (Gross-/Kleinschreibung egal). Die Unterkategorien werden der Reihe nach geprueft, die erste passende gewinnt. Darum stehen Sammel-Unterkategorien ('Sonstige') immer am Ende.",
 
+  "abruf": {
+    "_hinweis": "Steuert den Abruf und die parallelen GitHub-Jobs: jeder Markt bekommt einen eigenen Job, Maerkte unter 'teile' werden auf so viele parallele Jobs verteilt. Neuer Shop: Abruf-Modul in abrufen.ps1 (Hole-Alles) + hier eintragen.",
+    "maerkte": ["billa", "penny", "hofer", "lidl", "tchibo", "spar"],
+    "teile": { "spar": 16 }
+  },
+
   "kategorien": [
     {
       "id": "alkohol", "pos": 85,

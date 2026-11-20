@@ -6,8 +6,9 @@
   Aufruf:  powershell -ExecutionPolicy Bypass -File abrufen.ps1 [-Maerkte billa,spar]
   Aufgeteilter Abruf (GitHub Actions, parallel):
     abrufen.ps1 -Maerkte billa,penny -RohSchreiben roh              nur laden, Rohdaten nach roh\ schreiben
-    abrufen.ps1 -Maerkte spar -SparTeil 0 -SparTeile 8 -RohSchreiben roh   nur jede 8. Spar-Kategorie ab 0
-    abrufen.ps1 -RohLesen roh -SparTeile 8                           Rohdaten zusammenfuehren, Historie + Seite
+    abrufen.ps1 -Maerkte spar -Teil 0 -Teile 16 -RohSchreiben roh   nur jede 16. Spar-Kategorie ab 0
+    abrufen.ps1 -RohLesen roh                                      Rohdaten zusammenfuehren, Historie + Seite
+    Maerkte und Teilung stehen in konfig.json unter "abruf" (steuert auch die parallelen GitHub-Jobs).
   Laeuft unter Windows PowerShell 5.1 und PowerShell 7. Das Skript enthaelt bewusst keine
   Umlaute (5.1 liest Skripte als ANSI); Umlaute kommen nur aus den UTF-8-Dateien.
 #>
@@ -17,8 +18,8 @@ param(
     [int]$TageBehalten = 400,    # ... und fliegen nach so vielen Tagen aus der Historie
     [string]$RohSchreiben = '',  # Ordner: nur abrufen und Rohdaten je Markt dorthin schreiben, dann Ende
     [string]$RohLesen = '',      # Ordner: statt abzurufen die Rohdaten von dort lesen
-    [int]$SparTeil = -1,         # nur diesen Teil der Spar-Kategorien abrufen (0 .. SparTeile-1)
-    [int]$SparTeile = 1          # in wie viele Teile Spar aufgeteilt ist
+    [Alias("SparTeil")][int]$Teil = -1,     # nur diesen Teil eines grossen Marktes abrufen (0 .. Teile-1), derzeit Spar
+    [Alias("SparTeile")][int]$Teile = 1     # in wie viele Teile der Markt aufgeteilt ist
 )
 
 $ErrorActionPreference = 'Stop'
@@ -397,10 +398,12 @@ function Hole-Alles([string]$Markt) {
     $liste = New-Object Collections.ArrayList
     $tab = @{}
     if ($RohLesen) {
-        # Rohdaten aus parallelen Abrufen (roh-<markt>.json bzw. roh-spar-<teil>.json) zusammenfuehren
-        $dateien = @(Get-ChildItem -Path $RohLesen -Filter "roh-$Markt*.json" -File -Recurse -ErrorAction SilentlyContinue)
+        # Rohdaten aus parallelen Abrufen (roh-<markt>.json bzw. roh-<markt>-<teil>.json) zusammenfuehren
+        $muster = '^roh-' + [regex]::Escape($Markt) + '(-\d+)?\.json$'
+        $dateien = @(Get-ChildItem -Path $RohLesen -Filter 'roh-*.json' -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $muster })
         if (-not $dateien.Count) { throw "Keine Rohdaten fuer $Markt in $RohLesen" }
-        if ($Markt -eq 'spar' -and $dateien.Count -lt $SparTeile) { Melde-Teilfehler "spar: nur $($dateien.Count) von $SparTeile Teilen" ([pscustomobject]@{ Exception = [pscustomobject]@{ Message = 'Teil fehlt' } }) }
+        $soll = if ($Konfig.abruf -and $Konfig.abruf.teile -and $Konfig.abruf.teile.$Markt) { [int]$Konfig.abruf.teile.$Markt } else { 1 }
+        if ($dateien.Count -lt $soll) { Melde-Teilfehler "$Markt`: nur $($dateien.Count) von $soll Teilen" ([pscustomobject]@{ Exception = [pscustomobject]@{ Message = 'Teil fehlt' } }) }
         foreach ($f in $dateien) {
             $daten = Lies-Json $f.FullName   # erst zuweisen: PS 5.1 liefert ein JSON-Array sonst als ein Objekt
             foreach ($x in $daten) {
@@ -468,8 +471,8 @@ function Hole-Alles([string]$Markt) {
             $nr = 0
             foreach ($bl in $blaetter) {
                 $nr++
-                # Aufgeteilter Abruf: nur jede SparTeile-te Kategorie ab SparTeil
-                if ($SparTeil -ge 0 -and (($nr - 1) % $SparTeile) -ne $SparTeil) { continue }
+                # Aufgeteilter Abruf: nur jede Teile-te Kategorie ab Teil
+                if ($Teil -ge 0 -and (($nr - 1) % $Teile) -ne $Teil) { continue }
                 try {
                     $seiten = 1
                     for ($seite = 1; $seite -le $seiten -and $seite -le 400; $seite++) {
@@ -578,6 +581,8 @@ function Hole-Tipps {
 }
 
 # ---------------------------------------------------------------- Abruf
+# Ohne -Maerkte gilt die Liste aus konfig.json ("abruf.maerkte"); neue Shops nur dort ergaenzen
+if (-not $PSBoundParameters.ContainsKey('Maerkte') -and $Konfig.abruf -and $Konfig.abruf.maerkte) { $Maerkte = @($Konfig.abruf.maerkte) }
 $Maerkte = @($Maerkte | ForEach-Object { $_ -split '[,; ]+' } | Where-Object { $_ })   # "-File" liefert Listen als einen String
 
 # Nur abrufen und Rohdaten schreiben (Teil eines parallelen Abrufs); Zuordnung und Historie macht der Zusammenfuehr-Lauf
@@ -588,7 +593,7 @@ if ($RohSchreiben) {
         Write-Host "Lade $markt ..."
         try {
             $l = Hole-Alles $markt
-            $name = if ($markt -eq 'spar' -and $SparTeil -ge 0) { "roh-spar-$SparTeil.json" } else { "roh-$markt.json" }
+            $name = if ($Teil -ge 0) { "roh-$markt-$Teil.json" } else { "roh-$markt.json" }
             $zeilen = foreach ($x in $l) { ConvertTo-Json -InputObject ([ordered]@{ s = $x.s; namen = @($x.namen) }) -Compress -Depth 5 }
             [IO.File]::WriteAllText((Join-Path $RohSchreiben $name), '[' + (@($zeilen) -join ",`n") + "]`n", $Utf8)
             Write-Host ("  {0}: {1} Artikel -> {2}" -f $markt, $l.Count, $name)
@@ -600,7 +605,7 @@ if ($RohSchreiben) {
     }
     # Spar-Kategoriebaum mitgeben, damit der Zusammenfuehr-Lauf ihn im Repo aktualisieren kann
     $baum = Join-Path (Join-Path $Ordner 'daten') 'spar-kategorien.json'
-    if ($Maerkte -contains 'spar' -and $SparTeil -le 0 -and (Test-Path $baum)) { Copy-Item $baum (Join-Path $RohSchreiben 'spar-kategorien.json') -Force }
+    if ($Maerkte -contains "spar" -and $Teil -le 0 -and (Test-Path $baum)) { Copy-Item $baum (Join-Path $RohSchreiben 'spar-kategorien.json') -Force }
     if ($script:Teilfehler.Count) { Write-Warning ("Teilfehler: " + ($script:Teilfehler -join ', ')) }
     if ($fehlgeschlagen -eq $Maerkte.Count) { throw 'Kein Markt geladen.' }
     return

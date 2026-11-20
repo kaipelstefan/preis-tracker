@@ -1,10 +1,12 @@
-# Holt einmal taeglich das Gesamtsortiment aller Maerkte - parallel aufgeteilt:
-#   andere          Billa, Penny, Hofer, Lidl, Tchibo (ca. 10 Minuten)
-#   spar (8 Teile)  je ein Achtel der Spar-Kategorien; jeder Teil laeuft auf eigenem Runner mit
-#                   eigener IP, die Spar-Drosselung (Cloudflare) bremst die Teile also nicht gegenseitig
-#   vorab           sobald "andere" fertig ist: Seite schon aktualisieren (Spar vom Vortag), ohne Historie zu speichern
-#   zusammenfuehren Rohdaten zusammenfuehren, Historie fortschreiben, Seite hochladen, Historie speichern.
-#                   Laeuft auch, wenn einzelne Teile ausfallen (diese Maerkte/Teile fehlen dann fuer einen Tag).
+# Holt einmal taeglich das Gesamtsortiment aller Maerkte - so parallel wie moeglich:
+#   planen          liest konfig.json ("abruf") und erzeugt die Job-Liste (neue Shops nur dort eintragen)
+#   markt           je Markt ein eigener Job (Billa, Penny, Hofer, Lidl, Tchibo, ...), jeder schreibt Rohdaten
+#   teil            grosse Maerkte (derzeit Spar) in viele Teile; jeder Teil auf eigenem Runner mit eigener IP,
+#                   die Spar-Drosselung (Cloudflare) bremst die Teile also nicht gegenseitig
+#   vorab           sobald alle schnellen Maerkte fertig sind: Seite sofort aktualisieren (aufgeteilte Maerkte
+#                   bleiben bis zum Ende auf dem Vortag), ohne Historie zu speichern
+#   zusammenfuehren alles zusammenfuehren, Historie fortschreiben, Seite hochladen, Historie speichern.
+#                   Laeuft auch, wenn einzelne Jobs ausfallen (diese Maerkte/Teile fehlen dann fuer einen Tag).
 # Oeffentliches Repo -> Actions-Minuten sind kostenlos.
 name: Preise abrufen
 
@@ -21,57 +23,79 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  andere:
+  planen:
     # Erst aktiv, wenn die Repo-Variable AKTIV=ja gesetzt ist (nach Einrichtung von Webspace und Secrets)
     if: ${{ vars.AKTIV == 'ja' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 5
+    outputs:
+      schnell: ${{ steps.plan.outputs.schnell }}
+      langsam: ${{ steps.plan.outputs.langsam }}
+      schnelleliste: ${{ steps.plan.outputs.schnelleliste }}
     steps:
       - uses: actions/checkout@v5
-      - name: Billa, Penny, Hofer, Lidl, Tchibo abrufen
+      - id: plan
         shell: pwsh
-        run: ./abrufen.ps1 -Maerkte billa,penny,hofer,lidl,tchibo -RohSchreiben roh
+        run: ./abruf-plan.ps1 | Out-File -Append -Encoding utf8 $env:GITHUB_OUTPUT
+
+  markt:
+    needs: planen
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        markt: ${{ fromJSON(needs.planen.outputs.schnell) }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: ${{ matrix.markt }} abrufen
+        shell: pwsh
+        run: ./abrufen.ps1 -Maerkte ${{ matrix.markt }} -RohSchreiben roh
       - uses: actions/upload-artifact@v4
         with:
-          name: roh-andere
+          name: roh-${{ matrix.markt }}
           path: roh/
           retention-days: 1
 
-  spar:
-    if: ${{ vars.AKTIV == 'ja' }}
+  teil:
+    needs: planen
+    if: ${{ needs.planen.outputs.langsam != '[]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
+      max-parallel: 15
       matrix:
-        teil: [0, 1, 2, 3, 4, 5, 6, 7]
+        auftrag: ${{ fromJSON(needs.planen.outputs.langsam) }}
     steps:
       - uses: actions/checkout@v5
-      - name: Spar Teil ${{ matrix.teil }} von 8 abrufen
+      - name: ${{ matrix.auftrag.markt }} Teil ${{ matrix.auftrag.teil }} von ${{ matrix.auftrag.teile }}
         shell: pwsh
-        run: ./abrufen.ps1 -Maerkte spar -SparTeil ${{ matrix.teil }} -SparTeile 8 -RohSchreiben roh
+        run: ./abrufen.ps1 -Maerkte ${{ matrix.auftrag.markt }} -Teil ${{ matrix.auftrag.teil }} -Teile ${{ matrix.auftrag.teile }} -RohSchreiben roh
       - uses: actions/upload-artifact@v4
         with:
-          name: roh-spar-${{ matrix.teil }}
+          name: roh-${{ matrix.auftrag.markt }}-${{ matrix.auftrag.teil }}
           path: roh/
           retention-days: 1
 
-  # Sobald die schnellen Maerkte fertig sind: Seite vorab aktualisieren (Spar bleibt auf dem Vortag).
-  # Speichert die Historie NICHT - das macht nur "zusammenfuehren", damit es keine Konflikte gibt.
+  # Sobald die schnellen Maerkte fertig sind: Seite vorab aktualisieren. Speichert die Historie NICHT -
+  # das macht nur "zusammenfuehren", damit es keine Konflikte gibt.
   vorab:
-    needs: [andere]
-    if: ${{ vars.AKTIV == 'ja' }}
+    needs: [planen, markt]
+    if: ${{ always() && vars.AKTIV == 'ja' && needs.planen.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
-          name: roh-andere
+          pattern: roh-*
           path: roh
-      - name: Seite mit Billa, Penny, Hofer, Lidl, Tchibo aktualisieren
+          merge-multiple: true
+      - name: Seite mit den schnellen Maerkten aktualisieren
         shell: pwsh
-        run: ./abrufen.ps1 -Maerkte billa,penny,hofer,lidl,tchibo -RohLesen roh
+        run: ./abrufen.ps1 -Maerkte ${{ needs.planen.outputs.schnelleliste }} -RohLesen roh
       - name: Daten per FTP hochladen
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -85,14 +109,14 @@ jobs:
           log-level: minimal
 
   zusammenfuehren:
-    needs: [andere, spar, vorab]
-    if: ${{ always() && vars.AKTIV == 'ja' }}
+    needs: [planen, markt, teil, vorab]
+    if: ${{ always() && vars.AKTIV == 'ja' && needs.planen.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
 
-      - name: Rohdaten aller Teile holen
+      - name: Rohdaten aller Jobs holen
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -102,7 +126,7 @@ jobs:
 
       - name: Zuordnen, Historie fortschreiben, Seiten-Dateien erzeugen
         shell: pwsh
-        run: ./abrufen.ps1 -RohLesen roh -SparTeile 8
+        run: ./abrufen.ps1 -RohLesen roh
 
       - name: Daten per FTP hochladen
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
