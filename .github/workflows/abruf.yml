@@ -2,6 +2,7 @@
 #   andere          Billa, Penny, Hofer, Lidl, Tchibo (ca. 10 Minuten)
 #   spar (8 Teile)  je ein Achtel der Spar-Kategorien; jeder Teil laeuft auf eigenem Runner mit
 #                   eigener IP, die Spar-Drosselung (Cloudflare) bremst die Teile also nicht gegenseitig
+#   vorab           sobald "andere" fertig ist: Seite schon aktualisieren (Spar vom Vortag), ohne Historie zu speichern
 #   zusammenfuehren Rohdaten zusammenfuehren, Historie fortschreiben, Seite hochladen, Historie speichern.
 #                   Laeuft auch, wenn einzelne Teile ausfallen (diese Maerkte/Teile fehlen dann fuer einen Tag).
 # Oeffentliches Repo -> Actions-Minuten sind kostenlos.
@@ -55,8 +56,36 @@ jobs:
           path: roh/
           retention-days: 1
 
+  # Sobald die schnellen Maerkte fertig sind: Seite vorab aktualisieren (Spar bleibt auf dem Vortag).
+  # Speichert die Historie NICHT - das macht nur "zusammenfuehren", damit es keine Konflikte gibt.
+  vorab:
+    needs: [andere]
+    if: ${{ vars.AKTIV == 'ja' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: roh-andere
+          path: roh
+      - name: Seite mit Billa, Penny, Hofer, Lidl, Tchibo aktualisieren
+        shell: pwsh
+        run: ./abrufen.ps1 -Maerkte billa,penny,hofer,lidl,tchibo -RohLesen roh
+      - name: Daten per FTP hochladen
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME || secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOKOLL || 'ftps' }}
+          local-dir: ./site/daten/
+          server-dir: ${{ vars.FTP_ZIELORDNER || './' }}daten/
+          state-name: .ftp-deploy-daten.json
+          log-level: minimal
+
   zusammenfuehren:
-    needs: [andere, spar]
+    needs: [andere, spar, vorab]
     if: ${{ always() && vars.AKTIV == 'ja' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
