@@ -364,7 +364,7 @@
       ]
     },
     {
-      "id": "tier", "name": "Tierbedarf", "pos": 160,
+      "id": "tier", "name": "Tierbedarf", "pos": 160, "weglassen": true,
       "und": "tier|haustier",
       "unter": [
         { "id": "hund", "name": "Hund", "alle": [{ "pfadre": "hund" }] },

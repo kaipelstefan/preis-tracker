@@ -624,6 +624,9 @@ if ($RohLesen) {
     if ($baum) { Copy-Item $baum.FullName (Join-Path (Join-Path $Ordner 'daten') 'spar-kategorien.json') -Force }
 }
 
+# Kategorien mit "weglassen": true werden zwar zugeordnet (damit die Artikel nicht unter Sonstiges landen), aber nicht gespeichert
+$Weglassen = @{}
+foreach ($kat in @($Konfig.kategorien)) { if ($kat.weglassen) { $Weglassen[[string]$kat.id] = $true } }
 $neu = @{}
 $fehler = @()
 foreach ($markt in $Maerkte) {
@@ -631,7 +634,7 @@ foreach ($markt in $Maerkte) {
     try {
         $saetze = Ordne-Zu $markt
         $script:Roh.Remove($markt)   # Rohdaten freigeben (Speicher)
-        foreach ($s in $saetze) { if (-not $neu.ContainsKey($s.key)) { $neu[$s.key] = $s } }
+        foreach ($s in $saetze) { if ($s.k -and $Weglassen.ContainsKey([string]$s.k)) { continue }; if (-not $neu.ContainsKey($s.key)) { $neu[$s.key] = $s } }
         Write-Host ("  {0}: {1} Artikel" -f $markt, @($saetze).Count)
     } catch {
         Write-Warning "$markt fehlgeschlagen: $($_.Exception.Message)"
@@ -708,7 +711,7 @@ foreach ($markt in $Maerkte) {
 $entfernt = 0
 foreach ($key in @($hist.Keys)) {
     $e = $hist[$key]
-    if ($Ausgeblendet.ContainsKey($key) -or $e.z -lt $grenze) { $hist.Remove($key); continue }
+    if ($Ausgeblendet.ContainsKey($key) -or $e.z -lt $grenze -or ($e.k -and $Weglassen.ContainsKey([string]$e.k))) { $hist.Remove($key); continue }
     # Erst heute angelegt, beim jetzigen vollstaendigen Abruf aber nicht mehr zugeordnet
     # (z. B. nach einer Regelaenderung in konfig.json): wieder entfernen
     if ($e.a -eq $Heute -and $vollstaendig.ContainsKey($e.m) -and -not $neu.ContainsKey($key)) { $hist.Remove($key); $entfernt++ }
@@ -768,6 +771,7 @@ $groesse += Schreibe-Js 'suche' ('[' + ($suche -join ',') + ']')
 $katListe = New-Object Collections.ArrayList
 # Anzeigereihenfolge laut "pos" (Pruefreihenfolge bleibt die Reihenfolge in konfig.json)
 foreach ($kat in @($Konfig.kategorien | Sort-Object { if ($_.pos) { [int]$_.pos } else { 500 } })) {
+    if ($kat.weglassen) { continue }
     $unter = @($kat.unter | ForEach-Object { [ordered]@{ id = $_.id; name = $_.name; n = [int]$anzahlUk["$($kat.id)/$($_.id)"]; na = [int]$anzahlAktUk["$($kat.id)/$($_.id)"] } })
     [void]$katListe.Add([ordered]@{ id = $kat.id; name = $kat.name; n = [int]$anzahl[$kat.id]; na = [int]$anzahlAkt[$kat.id]; unter = $unter })
 }

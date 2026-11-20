@@ -102,6 +102,12 @@ main { min-width: 0; padding: 8px 0 40px; }
 .marke .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .marke .zahl { color: var(--leise); font-size: 12px; font-variant-numeric: tabular-nums; }
 .marke.leer { opacity: .5; }
+.b-vgl-best { background: var(--gut-bg); color: var(--gut); }
+.b-vgl-teurer { background: var(--mittel-bg); color: var(--mittel); }
+table.vgl tr[data-vgl] { cursor: pointer; }
+table.vgl tr[data-vgl]:hover td { background: var(--neutral-bg); }
+table.vgl tr.ich td { background: color-mix(in srgb, var(--akzent) 8%, transparent); }
+table.vgl td { vertical-align: top; }
 .meta .hs { font-weight: 600; color: var(--text); }
 .marke-nichts { color: var(--leise); font-size: 13px; padding: 6px 10px; }
 #marken-mehr { margin: 2px 4px 6px; }
@@ -232,6 +238,7 @@ code { background: var(--bg); padding: 1px 4px; border-radius: 4px; font-size: 1
     <div class="filter">
       <div class="chips" id="maerkte"></div>
       <button class="chip chip-fav" id="nur-fav" aria-pressed="false">★ Favoriten</button>
+      <button class="chip" id="nur-vgl" aria-pressed="false" title="Nur Artikel, die es in mehreren Märkten gibt – je Artikel der günstigste">⇄ Preisvergleich</button>
       <button class="chip kat-knopf" id="kat-knopf" aria-controls="katnav" aria-expanded="false" aria-pressed="false">☰ <span id="kat-knopf-text">Kategorien</span></button>
       <select id="bewertung" aria-label="Bewertung">
         <option value="">Alle Bewertungen</option>
@@ -478,7 +485,86 @@ function ladeKat(k) {
 }
 function ladeSuche() {
   if (SUCHE) return Promise.resolve(SUCHE);
-  return lade('suche').then(function (l) { SUCHE = l; l.forEach(function (z) { SUCHE_ID[z[0]] = z; }); return l; });
+  return lade('suche').then(function (l) { SUCHE = l; l.forEach(function (z) { SUCHE_ID[z[0]] = z; }); bildeGruppen(l); return l; });
+}
+
+// ------------------------------------------------------------------ Gleiche Artikel in verschiedenen Maerkten
+// Kein EAN in den Shop-Daten: Abgleich ueber Hersteller + Packungsgroesse + Namen.
+// Regeln: gleiche Menge; Zahlen im Namen duerfen sich nicht widersprechen (12 vs. 15 Jahre);
+// Sortenwoerter nur auf einer Seite zusaetzlich (sonst z. B. "Chili" vs. "Steinpilz");
+// Preisabstand hoechstens Faktor 2,5 (sonst meist Kiste vs. Flasche oder kg-Preis); nur gegenseitig beste Treffer.
+var GRUPPE = {};   // id -> Liste der ids derselben Ware (alle Maerkte)
+var VGL_STOP = new Set('und mit der die das in im fuer von zum zur aus a la le de the of original classic taste pet flasche dose einweg mehrweg packung pkg stk stueck st x je ca ml l g kg cl'.split(' '));
+var VGL_UML = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss' };
+function vglWoerter(s) {
+  return (s || '').toLowerCase().replace(/[äöüß]/g, function (c) { return VGL_UML[c]; }).replace(/(\d)([a-z])/g, '$1 $2')
+    .replace(/[^a-z0-9]+/g, ' ').split(' ').filter(function (t) { return t && !VGL_STOP.has(t); });
+}
+function bildeGruppen(S) {
+  var t0 = Date.now(), items = [], byId = {}, bloecke = {};
+  S.forEach(function (z) {
+    if (!(z[7] > 0)) return;
+    var it = { id: z[0], n: z[1], m: z[2], p: z[6] != null ? z[6] : z[5], qk: Math.round(z[7] * 1000) + z[8], b: vglWoerter(z[9]) };
+    it.groesse = /\d\s*(g|kg|ml|l|cl)\b/i.test(z[1]);
+    items.push(it); byId[it.id] = it;
+    var keys = it.b.length ? [it.b[0]] : vglWoerter(it.n).filter(function (t) { return !/^\d+$/.test(t); }).slice(0, 3);
+    keys.forEach(function (k) { (bloecke[it.qk + '|' + k] = bloecke[it.qk + '|' + k] || []).push(it); });
+  });
+  function zerlege(s, ohne) {
+    var w = {}, zz = {};
+    vglWoerter(s).forEach(function (t) { if (ohne.indexOf(t) >= 0) return; if (/^\d+$/.test(t)) zz[t] = 1; else w[t] = 1; });
+    return { w: Object.keys(w), z: Object.keys(zz).sort().join() };
+  }
+  function passt(a, b) {
+    if (!a.b.length && !b.b.length) return 0;
+    if (!(a.p > 0 && b.p > 0) || Math.max(a.p, b.p) / Math.min(a.p, b.p) > 2.5) return 0;
+    // Stueckartikel ohne bekannte Groesse: Groessenangabe im Namen muss auf beiden Seiten stehen (oder auf keiner)
+    if (/stk$/.test(a.qk) && a.groesse !== b.groesse) return 0;
+    var ohne = a.b.concat(b.b), A = zerlege(a.n, ohne), B = zerlege(b.n, ohne);
+    if (A.z && B.z && A.z !== B.z) return 0;
+    var nur1 = A.w.filter(function (t) { return B.w.indexOf(t) < 0; }).length, nur2 = B.w.filter(function (t) { return A.w.indexOf(t) < 0; }).length;
+    if (nur1 && nur2) return 0;
+    if (!A.w.length && !B.w.length) return 1;
+    var s = (A.w.length - nur1) / Math.max(A.w.length, B.w.length);
+    return s >= 0.6 ? s : 0;
+  }
+  var best = {};
+  Object.keys(bloecke).forEach(function (key) {
+    var L = bloecke[key]; if (L.length < 2) return;
+    var m0 = L[0].m; if (L.every(function (x) { return x.m === m0; })) return;
+    L.forEach(function (a) { L.forEach(function (b) {
+      if (a === b || a.m === b.m) return;
+      var s = passt(a, b); if (!s) return;
+      var k = a.id + '>' + b.m; if (!best[k] || s > best[k].s) best[k] = { j: b.id, s: s };
+    }); });
+  });
+  var par = {};
+  function wurzel(x) { while (par[x] !== x) x = par[x]; return x; }
+  Object.keys(best).forEach(function (k) {
+    var aid = k.slice(0, k.lastIndexOf('>')), bid = best[k].j, zur = best[bid + '>' + byId[aid].m];
+    if (!zur || zur.j !== aid) return;   // nur gegenseitig beste Treffer
+    if (par[aid] === undefined) par[aid] = aid; if (par[bid] === undefined) par[bid] = bid;
+    par[wurzel(aid)] = wurzel(bid);
+  });
+  var gr = {};
+  Object.keys(par).forEach(function (id) { var w = wurzel(id); (gr[w] = gr[w] || []).push(id); });
+  GRUPPE = {};
+  Object.keys(gr).forEach(function (w) { gr[w].forEach(function (id) { GRUPPE[id] = gr[w]; }); });
+  if (window.console) console.log('Preisvergleich: ' + Object.keys(gr).length + ' Artikel in mehreren Maerkten (' + (Date.now() - t0) + ' ms)');
+}
+// Vergleich fuer einen Artikel: gleiche Ware in den gewaehlten Maerkten, guenstigste zuerst
+function preisJetzt(id) { var r = POOL[id]; if (r && !r.kompakt) return r.bezahlt; var z = SUCHE_ID[id]; return z ? (z[6] != null ? z[6] : z[5]) : null; }
+function vergleich(id) {
+  var g = GRUPPE[id]; if (!g) return null;
+  var l = g.filter(function (x) { return SUCHE_ID[x] && Z.maerkte.has(SUCHE_ID[x][2]) && !ausgeblendet.has(x); })
+    .map(function (x) { var z = SUCHE_ID[x]; return { id: x, m: z[2], n: z[1], p: preisJetzt(x), aktion: z[6] != null }; })
+    .filter(function (x) { return x.p != null; })
+    .sort(function (a, b) { return a.p - b.p; });
+  if (new Set(l.map(function (x) { return x.m; })).size < 2) return null;
+  var ich = l.filter(function (x) { return x.id === id; })[0]; if (!ich) return null;
+  var andere = l.filter(function (x) { return x.m !== ich.m; });
+  var billigerAnderswo = andere[0].p < ich.p - 0.004 ? andere[0] : null;
+  return { liste: l, ich: ich, billiger: billigerAnderswo, bestpreis: !billigerAnderswo, vorteil: andere[andere.length - 1].p - ich.p, nachteil: billigerAnderswo ? ich.p - billigerAnderswo.p : 0 };
 }
 var KOMP = {};                 // id -> Kurz-Artikel aus dem Suchindex (Zwischenspeicher)
 // Hersteller: Schreibweisen zusammenfassen (z. B. "COCA-COLA" und "Coca-Cola")
@@ -504,14 +590,14 @@ function schalteFav(id) {
 function sternHtml(id) { var an = favoriten.has(id); return '<button class="stern" data-fav="' + esc(id) + '" aria-pressed="' + an + '" aria-label="' + (an ? 'Aus Favoriten entfernen' : 'Als Favorit merken') + '" title="' + (an ? 'Aus Favoriten entfernen' : 'Als Favorit merken') + '">' + (an ? '★' : '☆') + '</button>'; }
 
 // ------------------------------------------------------------------ Zustand / Filter
-var Z = { reiter: 'angebote', maerkte: new Set(D.maerkte.map(function (m) { return m.id; })), kategorie: '', unter: '', bewertung: '', sort: '', suche: '', zeigeAus: false, nurFav: false, ansicht: 'liste', limit: 100, marken: new Set() };
+var Z = { reiter: 'angebote', maerkte: new Set(D.maerkte.map(function (m) { return m.id; })), kategorie: '', unter: '', bewertung: '', sort: '', suche: '', zeigeAus: false, nurFav: false, ansicht: 'liste', limit: 100, marken: new Set(), nurVgl: false };
 try { var ans = localStorage.getItem('preis-tracker-ansicht'); if (ans === 'kacheln' || ans === 'liste') Z.ansicht = ans; } catch (e) {}
 try { var gespeichert = JSON.parse(localStorage.getItem('preis-tracker-filter') || 'null'); if (gespeichert) { Z.reiter = gespeichert.reiter || Z.reiter; Z.kategorie = KAT[gespeichert.kategorie] ? gespeichert.kategorie : ''; Z.unter = gespeichert.unter || ''; Z.nurFav = !!gespeichert.nurFav; if (gespeichert.maerkteAus && gespeichert.maerkteAus.length) { gespeichert.maerkteAus.forEach(function (m) { Z.maerkte.delete(m); }); if (!Z.maerkte.size) Z.maerkte = new Set(D.maerkte.map(function (m) { return m.id; })); } } } catch (e) {}
 function merke() { try { localStorage.setItem('preis-tracker-filter', JSON.stringify({ reiter: Z.reiter, kategorie: Z.kategorie, unter: Z.unter, nurFav: Z.nurFav, maerkteAus: D.maerkte.map(function (m) { return m.id; }).filter(function (m) { return !Z.maerkte.has(m); }) })); } catch (e) {} }
 
 var SORT = {
-  angebote: [['bewertung', 'Beste Angebote zuerst'], ['endet', 'Endet bald'], ['ersparnis', 'Größte Ersparnis (laut Verlauf)'], ['grundpreis', 'Günstigster Grundpreis'], ['name', 'Name']],
-  alle: [['name', 'Name'], ['grundpreis', 'Günstigster Grundpreis'], ['aenderung', 'Zuletzt geändert']]
+  angebote: [['bewertung', 'Beste Angebote zuerst'], ['endet', 'Endet bald'], ['ersparnis', 'Größte Ersparnis (laut Verlauf)'], ['grundpreis', 'Günstigster Grundpreis'], ['vorteil', 'Preisvergleich: größter Unterschied'], ['name', 'Name']],
+  alle: [['name', 'Name'], ['grundpreis', 'Günstigster Grundpreis'], ['vorteil', 'Preisvergleich: größter Unterschied'], ['aenderung', 'Zuletzt geändert']]
 };
 var RANG = { echt: 0, maessig: 1, neu: 2, lockvogel: 3 };
 
@@ -530,6 +616,7 @@ function bestand(reiter) {
   reiter = reiter || Z.reiter;
   if (reiter === 'angebote') {
     if (!ANGEBOTE) { ladeHinweis = 'Angebote werden geladen …'; return null; }
+    if (Z.nurVgl && !SUCHE) { ladeHinweis = 'Preisvergleich wird vorbereitet …'; ladeSuche().then(zeichne); return null; }
     return ANGEBOTE;
   }
   if (Z.kategorie) {
@@ -545,7 +632,7 @@ function bestand(reiter) {
     var l = []; favoriten.forEach(function (id) { if (POOL[id]) l.push(POOL[id]); });
     return l;
   }
-  if (Z.suche.trim().length >= 2 || Z.marken.size) {
+  if (Z.suche.trim().length >= 2 || Z.marken.size || Z.nurVgl) {
     if (!SUCHE) { ladeHinweis = 'Suchindex wird geladen …'; ladeSuche().then(zeichne); return null; }
     return SUCHE.map(kompakt);
   }
@@ -575,7 +662,14 @@ function passtOhneKat(r, nurAngebote, bald, q) {
   if (Z.bewertung === 'flag') { if (!r.flags.length) return false; }
   else if (Z.bewertung && !bald && r.bewertung !== Z.bewertung) return false;
   if (q.length) { var n = r.a.n.toLowerCase(); for (var i = 0; i < q.length; i++) if (n.indexOf(q[i]) < 0) return false; }
+  if (Z.nurVgl && !vglPasst(r.a.id, nurAngebote)) return false;
   return true;
+}
+// Filter "Preisvergleich": nur Ware, die es in mehreren (gewaehlten) Maerkten gibt.
+// Alle Artikel: je Ware nur der guenstigste Markt; Angebote: jede Aktion, deren Ware es auch anderswo gibt.
+function vglPasst(id, nurAngebote) {
+  var v = SUCHE ? vergleich(id) : null;
+  return !!v && (nurAngebote || v.liste[0].id === id);
 }
 
 // ------------------------------------------------------------------ Kategorie-Menue (links, am Handy ausklappbar)
@@ -597,6 +691,7 @@ function navZahlen() {
       if (!Z.zeigeAus && ausgeblendet.has(z[0])) return;
       if (Z.nurFav && !favoriten.has(z[0])) return;
       if (q.length) { var n = z[1].toLowerCase(); for (var i = 0; i < q.length; i++) if (n.indexOf(q[i]) < 0) return; }
+      if (Z.nurVgl && !vglPasst(z[0], false)) return;
       zaehle(z[3], z[4]);
     });
   }
@@ -613,7 +708,7 @@ function zeichneNav() {
   D.kategorien.forEach(function (k) {
     if (!k.n) return;
     var n = kN(k), aktiv = Z.kategorie === k.id;
-    if (!n && !aktiv && nz && (Z.suche.trim() || Z.nurFav || Z.marken.size)) return;   // bei Suche/Favoriten/Hersteller nur Kategorien mit Treffern
+    if (!n && !aktiv && nz && (Z.suche.trim() || Z.nurFav || Z.marken.size || Z.nurVgl)) return;   // bei Suche/Favoriten/Hersteller nur Kategorien mit Treffern
     var unter = (k.unter || []).filter(function (u) { var m = uN(k, u); return (m == null ? u.n : m) || (aktiv && Z.unter === u.id); });
     var offen = unter.length > 0 && (aktiv || NAV_OFFEN[k.id]);
     h += '<li class="nav-kat' + (offen ? ' offen' : '') + '"><div class="nav-zeile">' +
@@ -691,14 +786,19 @@ function navAuf(an) {
 }
 var handy = window.matchMedia('(max-width: 999px)');
 
+// Preisvergleich: Vorteil ggue. dem teuersten anderen Markt (Artikel ohne Vergleich ans Ende)
+var VGL_CACHE = {};
+function vglWert(r) { var id = r.a.id; if (!(id in VGL_CACHE)) { var v = SUCHE ? vergleich(id) : null; VGL_CACHE[id] = v ? (v.billiger ? -v.nachteil : v.vorteil) : -1e9; } return VGL_CACHE[id]; }
 function sortiere(l) {
+  VGL_CACHE = {};
   var by = {
     name: function (a, b) { return a.a.n.localeCompare(b.a.n, 'de'); },
     grundpreis: function (a, b) { return a.einheitspreis - b.einheitspreis; },
     ersparnis: function (a, b) { return (a.vsMedian != null ? a.vsMedian : a.lautMarkt / 2) - (b.vsMedian != null ? b.vsMedian : b.lautMarkt / 2); },
     bewertung: function (a, b) { return ((RANG[a.bewertung] || 0) - (RANG[b.bewertung] || 0)) || (a.flags.length - b.flags.length) || ((a.vsMedian != null ? a.vsMedian : a.lautMarkt) - (b.vsMedian != null ? b.vsMedian : b.lautMarkt)); },
     endet: function (a, b) { var x = a.vorschau ? a.av : a.ab, y = b.vorschau ? b.av : b.ab; return (x == null ? 9e15 : x) - (y == null ? 9e15 : y) || a.a.n.localeCompare(b.a.n, 'de'); },
-    aenderung: function (a, b) { return b.letzt.t - a.letzt.t || a.a.n.localeCompare(b.a.n, 'de'); }
+    aenderung: function (a, b) { return b.letzt.t - a.letzt.t || a.a.n.localeCompare(b.a.n, 'de'); },
+    vorteil: function (a, b) { return vglWert(b) - vglWert(a) || a.a.n.localeCompare(b.a.n, 'de'); }
   }[Z.sort];
   return l.sort(by);
 }
@@ -734,7 +834,24 @@ function markenHtml(r) {
     marken += '<span class="badge b-' + r.bewertung + '">' + BEWERTUNG_TEXT[r.bewertung] + zusatz + '</span>';
   } else if (r.inAktion) marken += '<span class="badge b-neu">Aktion · ' + prozent(r.lautMarkt) + ' laut Markt</span>';
   r.flags.forEach(function (f) { marken += '<span class="badge b-flag">' + esc(f.text) + '</span>'; });
+  marken += vglBadge(r.a.id);
   return marken;
+}
+function vglBadge(id) {
+  var v = SUCHE ? vergleich(id) : null; if (!v) return '';
+  if (v.billiger) return '<span class="badge b-vgl-teurer" title="Gleicher Artikel in anderem Markt">⇄ bei ' + esc(MARKTNAME[v.billiger.m] || v.billiger.m) + ' ' + euro(v.nachteil) + ' billiger</span>';
+  var andere = []; v.liste.forEach(function (x) { if (x.m !== v.ich.m && andere.indexOf(MARKTNAME[x.m] || x.m) < 0) andere.push(MARKTNAME[x.m] || x.m); });
+  return '<span class="badge b-vgl-best" title="Gleicher Artikel in anderen Märkten">⇄ ' + (v.vorteil > 0.004 ? 'Bestpreis · bis ' + euro(v.vorteil) + ' günstiger als ' : 'gleicher Preis wie ') + esc(andere.join(', ')) + '</span>';
+}
+function vglDetail(id) {
+  var v = SUCHE ? vergleich(id) : null; if (!v) return '';
+  var h = '<h3 style="font-size:14px;margin:14px 0 4px">⇄ Preisvergleich – gleicher Artikel</h3><table class="punkte vgl">';
+  v.liste.forEach(function (x, i) {
+    var diff = x.p - v.liste[0].p;
+    h += '<tr' + (x.id === id ? ' class="ich"' : ' data-vgl="' + esc(x.id) + '" tabindex="0"') + '><td><span class="markt m-' + x.m + '">' + esc(MARKTNAME[x.m] || x.m) + '</span></td><td>' + esc(x.n) + (x.id === id ? ' <span style="color:var(--leise)">(dieser)</span>' : '') + '</td>' +
+      '<td style="text-align:right;white-space:nowrap"><b>' + euro(x.p) + '</b>' + (x.aktion ? ' <span class="badge b-neu">Aktion</span>' : '') + '<br><span style="color:var(--leise);font-size:12px">' + (i === 0 || diff < 0.005 ? 'günstigster' : '+ ' + euro(diff)) + '</span></td></tr>';
+  });
+  return h + '</table><p style="color:var(--leise);font-size:12px;margin:4px 0 0">Automatisch erkannt über Hersteller, Packungsgröße und Namen – bitte im Zweifel im Shop prüfen.</p>';
 }
 
 function kachelHtml(r) {
@@ -798,10 +915,11 @@ function zeichne() {
   $('bewertung').hidden = Z.reiter !== 'angebote';
   var fz = favZahlen();
   $('nur-fav').setAttribute('aria-pressed', Z.nurFav);
+  $('nur-vgl').setAttribute('aria-pressed', Z.nurVgl);
   $('nur-fav').textContent = '★ Favoriten (' + fz.n + (fz.n ? ' · ' + fz.akt + ' in Aktion' : '') + ')';
   $('liste').className = 'liste' + (Z.ansicht === 'kacheln' ? ' kacheln' : '');
   Array.prototype.forEach.call(document.querySelectorAll('[data-ansicht]'), function (b) { b.setAttribute('aria-pressed', b.dataset.ansicht === Z.ansicht); });
-  var aktiv = (Z.maerkte.size < D.maerkte.length ? 1 : 0) + (Z.kategorie ? 1 : 0) + (Z.kategorie && Z.unter ? 1 : 0) + (Z.bewertung ? 1 : 0) + (Z.suche ? 1 : 0) + (Z.nurFav ? 1 : 0) + (Z.marken.size ? 1 : 0);
+  var aktiv = (Z.maerkte.size < D.maerkte.length ? 1 : 0) + (Z.kategorie ? 1 : 0) + (Z.kategorie && Z.unter ? 1 : 0) + (Z.bewertung ? 1 : 0) + (Z.suche ? 1 : 0) + (Z.nurFav ? 1 : 0) + (Z.marken.size ? 1 : 0) + (Z.nurVgl ? 1 : 0);
   $('zuruecksetzen').hidden = !aktiv;
   var tipps = (D.tipps || []).filter(function (t) { return !Z.kategorie || t.k === Z.kategorie; });
   $('tipps').hidden = Z.reiter !== 'angebote' || !tipps.length;
@@ -845,7 +963,7 @@ function zeichne() {
         (fz.akt ? ' <button class="knopf-leise" data-favwechsel="angebote">Nur die in Aktion zeigen</button>' : '') + '</div>';
   }
   else if (!l.length) meldung += '<div class="hinweis">Keine Artikel passen zu den Filtern. <button class="knopf-leise" data-reset>Filter zurücksetzen</button></div>';
-  if (Z.reiter === 'alle' && !Z.kategorie && (Z.suche.trim().length >= 2 || Z.marken.size)) meldung += '<div class="hinweis">Suchergebnisse über alle Kategorien.</div>';
+  if (Z.reiter === 'alle' && !Z.kategorie && (Z.suche.trim().length >= 2 || Z.marken.size || Z.nurVgl)) meldung += '<div class="hinweis">Suchergebnisse über alle Kategorien.</div>';
   $('meldung').innerHTML = meldung;
   var render = Z.ansicht === 'kacheln' ? kachelHtml : zeileHtml, html = '';
   l.slice(0, Z.limit).forEach(function (r, i) {
@@ -912,6 +1030,7 @@ function oeffne(id) {
   h += '</div>';
   if (r.inAktion) h += '<div><span class="badge b-' + r.bewertung + '">' + BEWERTUNG_TEXT[r.bewertung] + '</span>' + (r.letzt.text ? ' <span style="color:var(--leise);font-size:13px">' + esc(r.letzt.text) + '</span>' : '') + '</div>';
   if (r.flags.length) h += '<ul class="befund">' + r.flags.map(function (f) { return '<li>' + esc(f.text) + '</li>'; }).join('') + '</ul>';
+  h += vglDetail(a.id);
   h += '<h3 style="font-size:14px;margin:14px 0 4px">Grundpreis je ' + e + '</h3>' + diagramm(r);
   h += '<div class="legende"><span><i style="background:var(--akzent)"></i>bezahlt</span><span><i style="background:var(--leise)"></i>Normalpreis</span><span><i style="background:var(--mittel)"></i>Median</span><span><i style="background:var(--gut-bg);height:10px"></i>Aktion</span></div>';
   h += '<table class="punkte"><tr><th>ab</th><th>Normal</th><th>Aktion</th><th>Packung</th></tr>';
@@ -986,7 +1105,7 @@ Array.prototype.forEach.call(document.querySelectorAll('[data-ansicht]'), functi
   b.onclick = function () { Z.ansicht = b.dataset.ansicht; try { localStorage.setItem('preis-tracker-ansicht', Z.ansicht); } catch (e) {} zeichne(); };
 });
 $('nur-fav').onclick = function () { Z.nurFav = !Z.nurFav; Z.limit = 100; merke(); zeichne(); };
-function reset() { Z.maerkte = new Set(D.maerkte.map(function (m) { return m.id; })); Z.kategorie = ''; Z.unter = ''; Z.bewertung = ''; Z.suche = ''; Z.nurFav = false; Z.marken.clear(); MARKEN_Q = ''; $('marken-suche').value = ''; $('suche').value = ''; merke(); zeichne(); }
+function reset() { Z.maerkte = new Set(D.maerkte.map(function (m) { return m.id; })); Z.kategorie = ''; Z.unter = ''; Z.bewertung = ''; Z.suche = ''; Z.nurFav = false; Z.nurVgl = false; Z.marken.clear(); MARKEN_Q = ''; $('marken-suche').value = ''; $('suche').value = ''; merke(); zeichne(); }
 $('zuruecksetzen').onclick = reset;
 $('meldung').onclick = function (ev) {
   if (ev.target.closest('[data-reset]')) reset();
@@ -1002,6 +1121,9 @@ $('liste').onclick = function (ev) {
 };
 $('liste').onkeydown = function (ev) { if (ev.key === 'Enter') { var kk = ev.target.closest('[data-kat]'); if (kk) return waehleKat(kk.dataset.kat); var z = ev.target.closest('.zeile'); if (z && z.dataset.id) oeffne(z.dataset.id); } };
 $('schleier').onclick = schliesse;
+$('blatt').addEventListener('click', function (ev) { var v = ev.target.closest('[data-vgl]'); if (v) oeffne(v.dataset.vgl); });
+$('blatt').addEventListener('keydown', function (ev) { var v = ev.target.closest('[data-vgl]'); if (v && ev.key === 'Enter') oeffne(v.dataset.vgl); });
+$('nur-vgl').onclick = function () { Z.nurVgl = !Z.nurVgl; Z.limit = 100; if (Z.nurVgl && Z.sort !== 'vorteil') { Z.sort = 'vorteil'; fuelleSortierung(); } merke(); zeichne(); };
 document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { schliesse(); navAuf(false); } });
 
 fuelleSortierung();
