@@ -8,6 +8,11 @@ AuthName "Preis-Tracker"
 AuthUserFile __HTPASSWD_PFAD__
 Require valid-user
 
+# .htpasswd und .htaccess nie ausliefern
+<Files ".ht*">
+    Require all denied
+</Files>
+
 # Daten nicht cachen, damit der taegliche Stand sofort sichtbar ist
 <FilesMatch "\.(js|html)$">
     Header set Cache-Control "no-cache"
