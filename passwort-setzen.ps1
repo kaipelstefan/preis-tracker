@@ -1,8 +1,7 @@
 <#
-  Richtet den Passwortschutz fuer preise.kaipel.at ein (einmalig, bei Bedarf wiederholbar zum Passwortwechsel).
+  Richtet den Passwortschutz fuer preise.kaipel.at ein oder aendert das Passwort.
   - fragt Benutzername und Passwort ab (Passwort verdeckt)
-  - legt auf dem Server die .htpasswd an (Passwort nur verschluesselt gespeichert)
-  - hinterlegt den Pfad als GitHub-Secret HTPASSWD_PFAD und startet den Deploy (schreibt die .htaccess)
+  - der Server schreibt .htpasswd (Passwort nur verschluesselt) und die .htaccess der Seite
   - traegt Benutzer/Passwort in rechnungen\zugang.json ein (fuer die Rechnungsauswertung, nicht im Repo)
 
   Aufruf:  powershell -ExecutionPolicy Bypass -File passwort-setzen.ps1
@@ -22,16 +21,17 @@ function Klartext($s) { [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runt
 $pw = Klartext $p1
 if ($pw -ne (Klartext $p2)) { throw 'Die Passwoerter stimmen nicht ueberein.' }
 
-Write-Host 'Lege .htpasswd auf dem Server an ...'
-$antwort = Invoke-RestMethod -Uri ($basis + 'api/passwort.php') -Method Post -Headers @{ 'X-PT-Token' = [string]$z.token } -Body @{ benutzer = $benutzer; passwort = $pw }
-if (-not $antwort.ok) { throw "Server: $($antwort.fehler)" }
-Write-Host "  .htpasswd: $($antwort.pfad)"
+$kopf = @{ 'X-PT-Token' = [string]$z.token }
+# Ist der Schutz schon aktiv (Passwortwechsel), mit den bisherigen Zugangsdaten anmelden
+if ($z.benutzer -and $z.passwort -and ([string]$z.benutzer) -notlike 'HIER-*') {
+    $kopf['Authorization'] = 'Basic ' + [Convert]::ToBase64String($Utf8.GetBytes("$($z.benutzer):$($z.passwort)"))
+}
 
-Write-Host 'Hinterlege den Pfad in GitHub und starte den Deploy ...'
-gh secret set HTPASSWD_PFAD -R kaipelstefan/preis-tracker --body ([string]$antwort.pfad)
-gh workflow run deploy.yml -R kaipelstefan/preis-tracker --ref main
+Write-Host 'Richte den Passwortschutz auf dem Server ein ...'
+$antwort = Invoke-RestMethod -Uri ($basis + 'api/passwort.php') -Method Post -Headers $kopf -Body @{ benutzer = $benutzer; passwort = $pw }
+if (-not $antwort.ok) { throw "Server: $($antwort.fehler)" }
 
 $z.benutzer = $benutzer; $z.passwort = $pw
 [IO.File]::WriteAllText($zDatei, (ConvertTo-Json $z), $Utf8)
 Write-Host ''
-Write-Host 'Fertig. In etwa einer Minute fragt preise.kaipel.at nach Benutzer und Passwort.'
+Write-Host 'Fertig. preise.kaipel.at fragt ab sofort nach Benutzer und Passwort.'

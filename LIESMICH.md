@@ -86,12 +86,12 @@ Geplante Adresse: https://preise.kaipel.at (passwortgeschützt, noch nicht einge
 
 - **Repo öffentlich**, damit GitHub Actions kostenlos bleiben. Im Repo liegen nur Code, Konfiguration und Preisdaten. Rechnungen und Zugangsdaten sind nie darin, siehe `.gitignore`.
 - **`.github/workflows/abruf.yml`:** täglich 04:23 UTC, Laufzeit gut eine Stunde. Lädt `site/daten/` per FTP hoch und committet die Historie.
-- **`.github/workflows/deploy.yml`:** lädt `site/` mit PHP-API bei jeder Änderung hoch. Dabei erzeugt es `api/config.php` und `.htaccess` (Passwortschutz) aus Secrets.
+- **`.github/workflows/deploy.yml`:** lädt `site/` mit PHP-API bei jeder Änderung hoch und erzeugt dabei `api/config.php` aus den Secrets. Den Passwortschutz (`.htpasswd` und `.htaccess`) schreibt der Server selbst über `passwort-setzen.ps1`. Bei World4You führte eine per FTP hochgeladene `.htaccess` zu HTTP 500.
 - **Secrets:**
   - `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`
   - `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`
   - `PT_TOKEN`: zufällig, für die Auswertung aus Claude Code
-  - `HTPASSWD_PFAD`: absoluter Pfad der `.htpasswd` auf dem Webspace
+  - (Passwortschutz: kein Secret nötig, siehe `passwort-setzen.ps1`)
 - **Variablen:** `FTP_PROTOKOLL` (Standard `ftps`), `FTP_ZIELORDNER` (Verzeichnis der Subdomain).
 - **Rechnungsdateien** liegen auf dem Webspace in `rechnungen/`. Der Ordner ist per `.htaccess` gesperrt und nur über `api/datei.php` hinter dem Seitenpasswort erreichbar.
 

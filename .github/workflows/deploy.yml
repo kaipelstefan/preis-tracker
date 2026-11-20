@@ -1,6 +1,7 @@
 # Spielt die Webseite (Ordner site/ inkl. PHP-API) bei jeder Code-Aenderung hoch.
-# config.php (Datenbank, Token) und .htaccess (Passwortschutz) werden aus GitHub-Secrets erzeugt
-# und landen nie im Repo.
+# config.php (Datenbank, Token) wird aus GitHub-Secrets erzeugt und landet nie im Repo.
+# Die .htaccess mit dem Passwortschutz schreibt der Server selbst (passwort-setzen.ps1);
+# per FTP hochgeladen fuehrte sie bei World4You zu HTTP 500. Der Deploy fasst sie nicht an.
 name: Webseite veroeffentlichen
 
 on:
@@ -22,14 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: config.php und .htaccess aus Secrets erzeugen
+      - name: config.php aus Secrets erzeugen
         env:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASS: ${{ secrets.DB_PASS }}
           PT_TOKEN: ${{ secrets.PT_TOKEN }}
-          HTPASSWD_PFAD: ${{ secrets.HTPASSWD_PFAD }}
         run: |
           python3 - <<'PY'
           import os
@@ -37,12 +37,6 @@ jobs:
           werte = {k: os.environ.get(v, '').strip() for k, v in [('db_host','DB_HOST'),('db_name','DB_NAME'),('db_user','DB_USER'),('db_pass','DB_PASS'),('api_token','PT_TOKEN')]}
           zeilen = ["<?php", "return ["] + [f"    {php(k)} => {php(v)}," for k, v in werte.items()] + ["];", ""]
           open('site/api/config.php', 'w', encoding='utf-8').write("\n".join(zeilen))
-          # .htaccess nur erzeugen, wenn HTPASSWD_PFAD gesetzt ist; sonst bleibt der Verzeichnisschutz
-          # aus dem World4You-Kundenbereich (dessen .htaccess) unangetastet.
-          pfad = os.environ.get('HTPASSWD_PFAD', '').strip()
-          if pfad:
-              h = open('site/htaccess.beispiel', encoding='utf-8').read().replace('__HTPASSWD_PFAD__', pfad)
-              open('site/.htaccess', 'w', encoding='utf-8').write(h)
           PY
 
       - name: Per FTP hochladen
@@ -61,5 +55,4 @@ jobs:
             daten/**
             daten.js
             rechnungen/**
-            htaccess.beispiel
             api/config.beispiel.php
