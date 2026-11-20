@@ -10,3 +10,7 @@ site/rechnungen/
 rechnungen/
 
 .claude/
+
+# lokaler Spar-Abruf (spar-taeglich.ps1)
+roh-lokal/
+protokoll/
