@@ -81,6 +81,20 @@ function ablage(): string {
     return rtrim($d, '/');
 }
 
+// Zweite Sperre: private Daten nur, wenn der Webserver eine Anmeldung (Verzeichnisschutz) gemeldet hat.
+// Fehlt der Passwortschutz versehentlich, bleiben Rechnungen und Einkaeufe trotzdem zu.
+function pruefeAnmeldung(): void {
+    global $CFG;
+    if (($CFG['anmeldung_pruefen'] ?? true) === false) return;
+    foreach (['REMOTE_USER', 'REDIRECT_REMOTE_USER', 'PHP_AUTH_USER', 'AUTH_USER'] as $k) {
+        if (!empty($_SERVER[$k])) return;
+    }
+    // Manche Hoster reichen nur den Authorization-Header durch
+    $h = $_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+    if (stripos((string)$h, 'Basic ') === 0) return;
+    fehler('Kein Passwortschutz aktiv – Zugriff gesperrt. Bitte den Verzeichnisschutz für die Seite einrichten.', 403);
+}
+
 // Schutz fuer Schreibzugriffe aus Claude Code: Token zusaetzlich zum Seitenpasswort
 function pruefeToken(): void {
     global $CFG;

@@ -9,6 +9,7 @@
 //        Ersparnis der Rechnung = Summe aus rabatt der Positionen (bzw. rabatt_bon, falls hoeher)
 declare(strict_types=1);
 require __DIR__ . '/db.php';
+pruefeAnmeldung();
 pruefeToken();
 $pdo = db();
 

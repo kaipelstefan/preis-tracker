@@ -5,6 +5,7 @@
 //   einkaeufe.php?loeschen=<id>   -> Rechnung samt Datei loeschen (POST)
 declare(strict_types=1);
 require __DIR__ . '/db.php';
+pruefeAnmeldung();
 $pdo = db();
 
 if (isset($_GET['artikel'])) {

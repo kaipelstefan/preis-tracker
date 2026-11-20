@@ -2,6 +2,7 @@
 // Rechnung hochladen (Foto oder PDF). Feld: "datei" (multipart/form-data), optional "notiz".
 declare(strict_types=1);
 require __DIR__ . '/db.php';
+pruefeAnmeldung();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fehler('Nur POST', 405);
 if (empty($_FILES['datei']) || $_FILES['datei']['error'] !== UPLOAD_ERR_OK) fehler('Keine Datei empfangen (Fehler ' . ($_FILES['datei']['error'] ?? '?') . ')');

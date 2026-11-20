@@ -2,6 +2,7 @@
 // Gescannte Rechnung ausliefern: datei.php?id=123  (Seite ist per Passwort geschuetzt)
 declare(strict_types=1);
 require __DIR__ . '/db.php';
+pruefeAnmeldung();
 
 $id = (int)($_GET['id'] ?? 0);
 $st = db()->prepare('SELECT datei, mime, original FROM pt_rechnung WHERE id = ?');
