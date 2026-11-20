@@ -99,7 +99,7 @@ function pruefeAnmeldung(): void {
 function pruefeToken(): void {
     global $CFG;
     $t = $_SERVER['HTTP_X_PT_TOKEN'] ?? ($_GET['token'] ?? '');
-    if (empty($CFG['api_token']) || !hash_equals((string)$CFG['api_token'], (string)$t)) fehler('Token fehlt oder falsch', 403);
+    if (trim((string)($CFG['api_token'] ?? '')) === '' || !hash_equals(trim((string)$CFG['api_token']), trim((string)$t))) fehler('Token fehlt oder falsch', 403);
 }
 
 function rechnungZeile(array $r): array {

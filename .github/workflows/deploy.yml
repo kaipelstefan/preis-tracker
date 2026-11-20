@@ -34,7 +34,7 @@ jobs:
           python3 - <<'PY'
           import os
           def php(s): return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
-          werte = {k: os.environ.get(v, '') for k, v in [('db_host','DB_HOST'),('db_name','DB_NAME'),('db_user','DB_USER'),('db_pass','DB_PASS'),('api_token','PT_TOKEN')]}
+          werte = {k: os.environ.get(v, '').strip() for k, v in [('db_host','DB_HOST'),('db_name','DB_NAME'),('db_user','DB_USER'),('db_pass','DB_PASS'),('api_token','PT_TOKEN')]}
           zeilen = ["<?php", "return ["] + [f"    {php(k)} => {php(v)}," for k, v in werte.items()] + ["];", ""]
           open('site/api/config.php', 'w', encoding='utf-8').write("\n".join(zeilen))
           # .htaccess nur erzeugen, wenn HTPASSWD_PFAD gesetzt ist; sonst bleibt der Verzeichnisschutz
