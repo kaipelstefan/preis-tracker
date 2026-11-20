@@ -1,0 +1,528 @@
+{
+  "_hinweis": "Kategorien, Ausschluesse und ausgeblendete Artikel. Nach einer Aenderung einfach neu abrufen (Start.bat oder GitHub Action).",
+
+  "_regeln": "Je Unterkategorie und Markt eine Liste von Regeln. Eine Regel ist entweder die Shop-Kategorie als Text (Billa: Slug aus der URL, Spar: ID aus spar.at/produktwelt/<id>) oder ein Objekt { kat, muster, ohne } bzw. bei Penny und Lidl { pfad, muster, ohne }. pfad ist ein Name aus dem Kategorie-Pfad des Shops; bei Lidl geht auch 'Marke:Parkside'. muster/ohne sind regulaere Ausdruecke auf den Artikelnamen (Gross-/Kleinschreibung egal). Die Unterkategorien werden der Reihe nach geprueft, die erste passende gewinnt. Darum stehen Sammel-Unterkategorien ('Sonstige') immer am Ende.",
+
+  "kategorien": [
+    {
+      "id": "alkohol", "pos": 85,
+      "name": "Alkohol",
+      "ohne": "alkoholfrei|alkoholarm|entalkoholisiert|\\b0[,.]0\\b",
+      "tipps": "bier|wein|sekt|prosecco|champagner|whisk|gin\\b|rum\\b|vodka|wodka|likör|spirituose|aperol|schnaps|radler|cider",
+      "unter": [
+        { "id": "bier", "name": "Bier",
+          "billa": ["flaschenbier-13799", "dosenbier-13798"],
+          "spar":  ["traditionelles-bier", "weizenbier", "dunkles-bier", "biere-sonstige"],
+          "penny": [{ "pfad": "Bier & Radler", "ohne": "radler|cider" }],
+          "lidl":  [{ "pfad": "Bier & Cider", "ohne": "radler|cider" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "bier|märzen|pils|lager|zwickl|weizen|stout|\\bale\\b", "ohne": "radler|likör" }] },
+        { "id": "radler", "name": "Radler & Cider",
+          "billa": ["radler-15619", "cider-15620"],
+          "spar":  ["radler-co", "cider"],
+          "penny": [{ "pfad": "Bier & Radler" }],
+          "lidl":  [{ "pfad": "Bier & Cider" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "radler|cider" }] },
+        { "id": "rose", "name": "Rosé",
+          "billa": ["rose-15570"],
+          "spar":  ["roseweine"],
+          "penny": [{ "pfad": "Wein", "muster": "ros[eé]\\b|rosé" }],
+          "lidl":  [{ "pfad": "Wein", "muster": "ros[eé]\\b|rosé" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "ros[eé]\\b" }] },
+        { "id": "rotwein", "name": "Rotwein",
+          "billa": ["rotwein-13835"],
+          "spar":  ["rotweine"],
+          "penny": [{ "pfad": "Wein", "muster": "zweigelt|blaufr|merlot|cabernet|pinot noir|primitivo|rotwein|rosso|tinto|chianti|shiraz|syrah|montepulciano|laurent|blauburger|malbec|sangiovese|rioja|negroamaro|nero d" }],
+          "lidl":  [{ "pfad": "Wein", "muster": "zweigelt|blaufr|merlot|cabernet|pinot noir|primitivo|rotwein|rosso|tinto|chianti|shiraz|syrah|montepulciano|laurent|blauburger|malbec|sangiovese|rioja|negroamaro|nero d" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "zweigelt|blaufr|merlot|cabernet|pinot noir|primitivo|rotwein|rosso|tinto|chianti|shiraz|syrah|montepulciano|laurent|blauburger|malbec|sangiovese|rioja", "ohne": "punsch|glühwein|likör" }] },
+        { "id": "weisswein", "name": "Weißwein",
+          "billa": ["weisswein-13834"],
+          "spar":  ["weissweine"],
+          "penny": [{ "pfad": "Wein" }],
+          "lidl":  [{ "pfad": "Wein", "ohne": "sekt|prosecco|spumante|frizzante|champagne|glühwein|punsch" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "veltliner|riesling|chardonnay|sauvignon|muskateller|welsch|burgunder|pinot gris|pinot grigio|traminer|weißwein|weisswein|gemischter satz", "ohne": "sekt|prosecco|grappa|punsch" }] },
+        { "id": "dessertwein", "name": "Dessertwein & Port",
+          "billa": ["dessertwein-und-portwein-13836"],
+          "spar":  ["suess-dessertweine"],
+          "penny": [],
+          "lidl":  [],
+          "hofer": [] },
+        { "id": "sekt", "name": "Sekt & Prosecco",
+          "billa": ["sekt-13823", "prosecco-13822", "schaumwein-und-perlwein-15610"],
+          "spar":  ["prosecco", "sekt", "spumante-frizzante", "andere-schaumweine"],
+          "penny": [{ "pfad": "Sekt & Champagner", "ohne": "champagne" }],
+          "lidl":  [{ "pfad": "Champagner, Sekt & Co.", "ohne": "champagne" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "sekt|prosecco|frizzante|spumante|cr[ée]mant|cava\\b", "ohne": "champagne|grappa" }] },
+        { "id": "champagner", "name": "Champagner",
+          "billa": ["champagner-13821"],
+          "spar":  ["champagner"],
+          "penny": [{ "pfad": "Sekt & Champagner" }],
+          "lidl":  [{ "pfad": "Champagner, Sekt & Co." }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "champagne" }] },
+        { "id": "whisky", "name": "Whisky & Cognac",
+          "billa": ["cognac-und-whiskey-13828"],
+          "spar":  ["whisk-e-y-bourbon", "weinbrand-cognac"],
+          "penny": [{ "pfad": "Spirituosen", "muster": "whisk|bourbon|cognac|brandy|weinbrand" }],
+          "lidl":  [{ "pfad": "Wein, Bier und Spirituosen", "muster": "whisk|bourbon|cognac|brandy|weinbrand" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "whisk|bourbon|cognac|brandy|weinbrand" }] },
+        { "id": "gin", "name": "Gin",
+          "billa": ["gin-13826"],
+          "spar":  ["gin"],
+          "penny": [{ "pfad": "Spirituosen", "muster": "\\bgin\\b" }],
+          "lidl":  [{ "pfad": "Wein, Bier und Spirituosen", "muster": "\\bgin\\b" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "\\bgin\\b" }] },
+        { "id": "rum", "name": "Rum",
+          "billa": ["rum-13830"],
+          "spar":  ["rum"],
+          "penny": [{ "pfad": "Spirituosen", "muster": "\\brum\\b|\\bron\\b" }],
+          "lidl":  [{ "pfad": "Wein, Bier und Spirituosen", "muster": "\\brum\\b|\\bron\\b" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "\\brum\\b|\\bron\\b" }] },
+        { "id": "wodka", "name": "Wodka",
+          "billa": ["vodka-13829"],
+          "spar":  ["vodka"],
+          "penny": [{ "pfad": "Spirituosen", "muster": "vodka|wodka" }],
+          "lidl":  [{ "pfad": "Wein, Bier und Spirituosen", "muster": "vodka|wodka" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "vodka|wodka" }] },
+        { "id": "likoer", "name": "Likör",
+          "billa": ["likoer-15319"],
+          "spar":  ["likoere"],
+          "penny": [{ "pfad": "Spirituosen", "muster": "lik[öo]r|liqueur|cream|creme" }],
+          "lidl":  [{ "pfad": "Wein, Bier und Spirituosen", "muster": "lik[öo]r|liqueur|cream|creme" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "lik[öo]r|liqueur|cream|creme" }] },
+        { "id": "schnaps", "name": "Schnaps & Grappa",
+          "billa": ["schnaps-13825"],
+          "spar":  ["schnaepse-braende", "grappa"],
+          "penny": [{ "pfad": "Spirituosen", "muster": "schnaps|obstler|grappa|brand\\b|marille|williams|vogelbeer|zirbe" }],
+          "lidl":  [{ "pfad": "Wein, Bier und Spirituosen", "muster": "schnaps|obstler|grappa|brand\\b|marille|williams|vogelbeer|zirbe" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "schnaps|obstler|grappa|brand\\b|korn\\b|marille|williams|vogelbeer|zirbe" }] },
+        { "id": "aperitif", "name": "Aperitif & Bitter",
+          "billa": ["aperitif-und-digestif-13827"],
+          "spar":  ["bitter-getraenke", "wermut-absinth"],
+          "penny": [{ "pfad": "Spirituosen", "muster": "aperol|campari|martini|bitter|j[äa]germeister|wermut|ramazzotti|averna|sprizz|spritz" }],
+          "lidl":  [{ "pfad": "Wein, Bier und Spirituosen", "muster": "aperol|campari|martini|bitter|j[äa]germeister|wermut|ramazzotti|averna|sprizz|spritz" }],
+          "hofer": [{ "pfad": "Alkohol", "muster": "aperol|campari|martini|bitter|j[äa]germeister|wermut|ramazzotti|averna|spritz" }] },
+        { "id": "spirituosen-sonst", "name": "Sonstige Spirituosen & Mixgetränke",
+          "billa": ["tequila-13832", "alkopops-13831"],
+          "spar":  ["tequila-mezcal", "premixes", "alkoholische-heissgetraenke", "weinhaltige-getraenke"],
+          "penny": [{ "pfad": "Spirituosen" }],
+          "lidl":  [{ "pfad": "Wein, Bier und Spirituosen" }],
+          "hofer": [{ "pfad": "Alkohol" }] }
+      ]
+    },
+    {
+      "id": "nudeln", "pos": 65,
+      "name": "Nudeln",
+      "tipps": "nudel|pasta|spaghetti|barilla|teigwar|tortellini",
+      "unter": [
+        { "id": "glutenfrei", "name": "Glutenfrei",
+          "billa": ["glutenfreie-pasta-15085"],
+          "spar":  [{ "kat": "nudeln-teigwaren", "muster": "glutenfrei|gluten-free|senza glutine" }],
+          "penny": [{ "pfad": "Reis, Teigwaren & Sugo", "muster": "glutenfrei" }],
+          "lidl":  [{ "pfad": "Reis, Nudeln & Hülsenfrüchte", "muster": "glutenfrei" }],
+          "hofer": [{ "pfad": "Alle", "muster": "glutenfrei.*(teigwaren|pasta|nudel|spaghetti|penne|fusilli)|(teigwaren|pasta|nudel|spaghetti|penne|fusilli).*glutenfrei" }] },
+        { "id": "gefuellt", "name": "Gefüllte Pasta",
+          "billa": ["tortellini-15083", { "kat": "sonstige-pasta-15084", "muster": "ravioli|tortell|cappelletti|gef[üu]llt" }],
+          "spar":  [{ "kat": "nudeln-teigwaren", "muster": "ravioli|tortell|cappelletti|gef[üu]llt|agnolotti" }],
+          "penny": [{ "pfad": "Reis, Teigwaren & Sugo", "muster": "ravioli|tortell|gef[üu]llt" }],
+          "lidl":  [{ "pfad": "Frische Pasta & Teige", "muster": "ravioli|tortell|cappelletti|gef[üu]llt|girasoli|agnolotti" }, { "pfad": "Reis, Nudeln & Hülsenfrüchte", "muster": "ravioli|tortell|gef[üu]llt" }],
+          "hofer": [{ "pfad": "Alle", "muster": "tortell|ravioli|cappelletti|gef[üu]llte (pasta|nudel)", "ohne": "sauce|sugo" }] },
+        { "id": "spaghetti", "name": "Spaghetti & lange Nudeln",
+          "billa": ["spaghetti-15080", { "kat": "sonstige-pasta-15084", "muster": "linguine|bucatini|capellini|vermicelli" }],
+          "spar":  [{ "kat": "nudeln-teigwaren", "muster": "spaghett|linguine|bucatini|capellini|vermicelli" }],
+          "penny": [{ "pfad": "Reis, Teigwaren & Sugo", "muster": "spaghett|linguine" }],
+          "lidl":  [{ "pfad": "Reis, Nudeln & Hülsenfrüchte", "muster": "spaghett|linguine" }],
+          "hofer": [{ "pfad": "Alle", "muster": "spaghett|linguine", "ohne": "unterhemd|träger|sauce|sugo|kürbis|zange|topf" }] },
+        { "id": "bandnudeln", "name": "Bandnudeln & Lasagne",
+          "billa": [{ "kat": "sonstige-pasta-15084", "muster": "tagliatelle|fettuccine|bandnudel|pappardelle|lasagne|nester|nidi" }],
+          "spar":  [{ "kat": "nudeln-teigwaren", "muster": "tagliatelle|fettuccine|bandnudel|pappardelle|lasagne|nester|nidi" }],
+          "penny": [{ "pfad": "Reis, Teigwaren & Sugo", "muster": "tagliatelle|bandnudel|lasagne" }],
+          "lidl":  [{ "pfad": "Reis, Nudeln & Hülsenfrüchte", "muster": "tagliatelle|bandnudel|lasagne|pappardelle" }, { "pfad": "Frische Pasta & Teige", "muster": "tagliatelle|lasagne|pappardelle" }],
+          "hofer": [{ "pfad": "Alle", "muster": "tagliatelle|fettuccine|bandnudel|lasagne|pappardelle", "ohne": "sauce|sugo|fertig|form|knorr|basis|\\bfix\\b" }] },
+        { "id": "kurz", "name": "Kurze Nudeln (Penne, Fusilli …)",
+          "billa": ["penne-15081", "fussili-15082", "sonstige-pasta-15084"],
+          "spar":  ["nudeln-teigwaren"],
+          "penny": [{ "pfad": "Reis, Teigwaren & Sugo", "muster": "nudel|pasta|penne|fusilli|farfalle|teigwar|makkaroni|maccheroni|spirelli|hörnchen|gnocchi" }],
+          "lidl":  [{ "pfad": "Reis, Nudeln & Hülsenfrüchte", "muster": "nudel|pasta|penne|fusilli|farfalle|teigwar|makkaroni|maccheroni|spirelli|hörnchen|gnocchi" }, { "pfad": "Frische Pasta & Teige", "muster": "nudel|pasta|gnocchi" }],
+          "hofer": [{ "pfad": "Alle", "muster": "teigwaren|\\bpasta\\b|fusilli|penne|conchiglie|trottole|torciglioni|gigli|farfalle|makkaroni|hörnchen|spirelli", "ohne": "sauce|sugo|salat|fertig|instant|wok|\\bmie\\b|ramen|udon|teller|maschine|topf|knorr|basis|\\bfix\\b|auflauf" }] }
+      ]
+    },
+    {
+      "id": "kaffee", "pos": 74,
+      "name": "Kaffee",
+      "tipps": "kaffee|espresso|nespresso|dolce gusto|tchibo|jacobs|lavazza|illy|eduscho|kaffeebohnen",
+      "unter": [
+        { "id": "bohnen", "name": "Ganze Bohnen",
+          "billa": ["ganze-bohne-13803"],
+          "spar":  ["kaffeebohnen"],
+          "penny": [{ "pfad": "Kaffee, Tee & Co.", "muster": "bohne" }],
+          "lidl":  [{ "pfad": "Kaffee, Tee & Kakao", "muster": "bohne|crema|espresso" , "ohne": "kapsel|pads|gemahlen" }],
+          "hofer": [{ "pfad": "Alle", "muster": "kaffee.*bohne|bohnenkaffee|ganze bohne|espresso.*bohne" }],
+          "tchibo": [{ "pfad": "Alle", "muster": "bohne", "ohne": "gemahlen|kapsel|pads" }] },
+        { "id": "gemahlen", "name": "Gemahlen",
+          "billa": ["gemahlen-13804"],
+          "spar":  ["gemahlener-kaffee"],
+          "penny": [{ "pfad": "Kaffee, Tee & Co.", "muster": "gemahlen|filterkaffee" }],
+          "lidl":  [{ "pfad": "Kaffee, Tee & Kakao", "muster": "gemahlen|filterkaffee" }],
+          "hofer": [{ "pfad": "Alle", "muster": "kaffee.*gemahlen|gemahlen.*kaffee|filterkaffee" }],
+          "tchibo": [{ "pfad": "Alle", "muster": "gemahlen|filterkaffee" }] },
+        { "id": "kapseln", "name": "Kapseln & Pads",
+          "billa": ["tabs-und-pads-13805"],
+          "spar":  ["kaffeekapseln-kaffeepads"],
+          "penny": [{ "pfad": "Kaffee, Tee & Co.", "muster": "kapsel|pads|tabs" }],
+          "lidl":  [{ "pfad": "Kaffee, Tee & Kakao", "muster": "kapsel|pads|tabs" }],
+          "hofer": [{ "pfad": "Alle", "muster": "kaffee.*kapsel|caf[ée].*kapsel|kapsel.*(kaffee|espresso|lungo)|kaffeepads", "ohne": "halter|spender|maschine|turm" }],
+          "tchibo": [{ "pfad": "Alle", "muster": "kapsel|pads|cafissimo|qbo" }] },
+        { "id": "loeslich", "name": "Löslich",
+          "billa": ["loeslich-13806"],
+          "spar":  ["loeskaffee"],
+          "penny": [{ "pfad": "Kaffee, Tee & Co.", "muster": "l[öo]slich|instant" }],
+          "lidl":  [{ "pfad": "Kaffee, Tee & Kakao", "muster": "l[öo]slich|instant" }],
+          "hofer": [{ "pfad": "Alle", "muster": "l[öo]slicher kaffee|instantkaffee|instant-kaffee" }],
+          "tchibo": [{ "pfad": "Alle", "muster": "l[öo]slich|instant" }] },
+        { "id": "kaffee-sonst", "name": "Sonstiges (entkoffeiniert, trinkfertig, Ersatz)",
+          "billa": ["koffeinfrei-13807", "trinkfertiger-kaffee-13808"],
+          "spar":  ["malzkaffee-kaffeeersatz"],
+          "penny": [{ "pfad": "Kaffee, Tee & Co.", "muster": "kaffee|espresso|caff|crema|cappuccino|melange|latte" }],
+          "lidl":  [{ "pfad": "Kaffee, Tee & Kakao", "muster": "kaffee|espresso|caff|crema|cappuccino|melange|latte" }],
+          "hofer": [],
+          "tchibo": [{ "pfad": "Alle" }] }
+      ]
+    },
+    {
+      "id": "fleisch", "pos": 50,
+      "name": "Fleisch",
+      "tipps": "fleisch|schnitzel|steak|faschiert|hendl|huhn|pute|rind|schwein|kotelett|braten|gulasch",
+      "unter": [
+        { "id": "faschiertes", "name": "Faschiertes",
+          "billa": ["faschiertes-15576"],
+          "spar":  [{ "kat": "rind-kalb", "muster": "faschiert" }, { "kat": "schweinefleisch", "muster": "faschiert" }, { "kat": "fleisch-sonstiges", "muster": "faschiert" }],
+          "penny": [{ "pfad": "Fleisch", "muster": "faschiert" }],
+          "lidl":  [{ "pfad": "Fleisch & Geflügel", "muster": "faschiert", "ohne": "wurst|aufschnitt" }],
+          "hofer": [{ "pfad": "Faschiertes" }, { "pfad": "Fleisch und Wurstwaren", "muster": "faschiert" }] },
+        { "id": "gefluegel", "name": "Geflügel",
+          "billa": ["gefluegel-15575"],
+          "spar":  ["huhn-pute", "ente-gans"],
+          "penny": [{ "pfad": "Fleisch", "muster": "huhn|hendl|h[üu]hner|pute|ente|gans|gefl[üu]gel|chicken|poulet" }],
+          "lidl":  [{ "pfad": "Geflügel" }],
+          "hofer": [{ "pfad": "Geflügel" }] },
+        { "id": "rind", "name": "Rind & Kalb",
+          "billa": ["rindfleisch-15578"],
+          "spar":  ["rind-kalb"],
+          "penny": [{ "pfad": "Fleisch", "muster": "rind|kalb|beef|steak" }],
+          "lidl":  [{ "pfad": "Rindfleisch" }],
+          "hofer": [{ "pfad": "Rind" }] },
+        { "id": "schwein", "name": "Schwein",
+          "billa": ["schweinefleisch-15577"],
+          "spar":  ["schweinefleisch"],
+          "penny": [{ "pfad": "Fleisch", "muster": "schwein|kotelett|karree|bauch|schopf|stelze|kaiserteil|schnitzel" }],
+          "lidl":  [{ "pfad": "Schweinefleisch" }],
+          "hofer": [{ "pfad": "Schwein" }] },
+        { "id": "fleisch-sonst", "name": "Wild, Lamm & Sonstiges",
+          "billa": ["wild-und-saisonales-15579", "spezialitaeten-15582"],
+          "spar":  ["fleisch-sonstiges"],
+          "penny": [{ "pfad": "Fleisch" }],
+          "lidl":  [{ "pfad": "Lammfleisch" }, { "pfad": "Sonstiges Fleisch" }],
+          "hofer": [] }
+      ]
+    },
+    {
+      "id": "alkoholfrei", "pos": 80,
+      "name": "Alkoholfreie Getränke",
+      "tipps": "mineralwasser|limonade|\\bcola\\b|almdudler|red bull|energy|eistee|ice tea|fruchtsaft|\\bsaft\\b|nektar|sirup|smoothie|eiskaffee",
+      "_ohne_hofer": "Hofer hat Getraenke nur als Wochenangebote ohne Kategorie; daher Stichworte plus Ausschluesse fuer Geraete und Suesswaren.",
+      "unter": [
+        { "id": "alkfrei-bier-wein", "name": "Alkoholfreies Bier, Wein & Sekt",
+          "billa": ["alkoholfreies-bier-13797", "alkoholfreie-alternativen-15621", "alkoholfreie-alternativen-15616", "alkoholfreie-alternativen-15612", "alkoholfreie-spirituosen-14533"],
+          "spar":  ["alkoholfreies-bier-leichtbier", "alkoholfreie-weine", "alkoholfreie-schaumweine", "alkohlfreie-weine-schaumweine"],
+          "penny": [{ "pfad": "Getränke", "muster": "alkoholfrei|\\b0[,.]0\\b" }],
+          "lidl":  [{ "pfad": "Alkoholfreie Weine" }, { "pfad": "Wein, Bier und Spirituosen", "muster": "alkoholfrei|\\b0[,.]0\\b" }],
+          "hofer": [{ "pfad": "Alle", "muster": "(bier|wein|sekt|radler|prosecco).*(alkoholfrei|\\b0[,.]0\\b)|(alkoholfrei|\\b0[,.]0\\b).*(bier|wein|sekt|radler|prosecco)" }] },
+        { "id": "wasser-geschmack", "name": "Wasser mit Geschmack",
+          "billa": ["mit-geschmack-15657", "mineralwasser-mit-geschmack-13793"],
+          "spar":  ["mineralwasser-mit-geschmack"],
+          "penny": [{ "pfad": "Mineralwasser", "muster": "geschmack|zitrone|limette|apfel|holunder|himbeer|frucht|pfirsich|\\bplus\\b|\\+" }],
+          "lidl":  [{ "pfad": "Getränke", "muster": "wasser.*(geschmack|zitrone|limette|apfel|holunder|himbeer|frucht|pfirsich)" }],
+          "hofer": [{ "pfad": "Alle", "muster": "wasser.*(geschmack|zitrone|limette|apfel|holunder|himbeer|pfirsich)", "ohne": "kocher|filter|flasche|spender|sprudler|kerze|duft|seife|dusch" }] },
+        { "id": "mineralwasser", "name": "Mineralwasser & Soda",
+          "billa": ["still-13838", "mild-13839", "prickelnd-13840"],
+          "spar":  ["prickelnd", "mild", "still"],
+          "penny": [{ "pfad": "Mineralwasser" }],
+          "lidl":  [{ "pfad": "Getränke", "muster": "mineralwasser|tafelwasser|\\bsoda\\b|quellwasser" }],
+          "hofer": [{ "pfad": "Alle", "muster": "mineralwasser|tafelwasser|quellwasser|\\bsoda\\b", "ohne": "sprudler|maschine|zylinder|flasche|kocher|filter" }] },
+        { "id": "limonaden", "name": "Limonaden, Cola & Tonic",
+          "billa": ["limonaden-13791"],
+          "spar":  ["limonaden-cola", "tonic-bitter-getraenke"],
+          "penny": [{ "pfad": "Alkoholfreie Getränke", "muster": "\bcola\b|coca-cola|limo|fanta|sprite|almdudler|frucade|kracherl|\btonic\b|schweppes|pepsi|\b7 ?up\b|mezzo|ginger|bitter lemon|\bspezi\b", "ohne": "sirup" }],
+          "lidl":  [{ "pfad": "Getränke", "muster": "\bcola\b|coca-cola|limo|fanta|sprite|almdudler|frucade|kracherl|\btonic\b|schweppes|pepsi|\b7 ?up\b|mezzo|ginger|bitter lemon|\bspezi\b", "ohne": "sirup" }],
+          "hofer": [{ "pfad": "Alle", "muster": "\bcola\b|coca-cola|limonade|almdudler|frucade|kracherl|\btonic\b|schweppes|pepsi|\b7 ?up\b|mezzo mix|ginger ale|bitter lemon|\bspezi\b", "ohne": "sirup|lik[öo]r|\\brum\\b|bonbon|gummi|chips|kerze|glas|becher|sirup|kuchen|schokolade" }] },
+        { "id": "eistee", "name": "Eistee",
+          "billa": ["eistee-13787"],
+          "spar":  ["eistee-teegetraenke"],
+          "penny": [{ "pfad": "Alkoholfreie Getränke", "muster": "eistee|ice ?tea|eis-tee" }],
+          "lidl":  [{ "pfad": "Getränke", "muster": "eistee|ice ?tea|eis-tee" }],
+          "hofer": [{ "pfad": "Alle", "muster": "eistee|ice ?tea|eis-tee" }] },
+        { "id": "energy", "name": "Energy Drinks",
+          "billa": ["energydrinks-13788"],
+          "spar":  ["energy-drinks"],
+          "penny": [{ "pfad": "Alkoholfreie Getränke", "muster": "energy|red bull|monster|rockstar|power horse|\\bburn\\b|28 black" }],
+          "lidl":  [{ "pfad": "Getränke", "muster": "energy|red bull|monster|rockstar|power horse|\\bburn\\b|28 black" }],
+          "hofer": [{ "pfad": "Alle", "muster": "energy ?drink|red bull|monster energy|power horse", "ohne": "riegel|gummi|kaugummi|bonbon|deo|dusch|spray|old spice" }] },
+        { "id": "saefte", "name": "Säfte, Nektar & Smoothies",
+          "billa": ["frucht-und-gemuesesaefte-13789", "smoothies-und-fresh-juice-13795"],
+          "spar":  ["fruchtsaefte-nektare", "fruchtsaefte-gespritzt", "smoothies-gekuehlte-saefte"],
+          "penny": [{ "pfad": "Alkoholfreie Getränke", "muster": "saft|säfte|nektar|smoothie|juice|gespritzt|pago|rauch|hohes c" }],
+          "lidl":  [{ "pfad": "Fruchtsäfte" }, { "pfad": "Getränke", "muster": "saft|nektar|smoothie|juice|gespritzt" }],
+          "hofer": [{ "pfad": "Alle", "muster": "fruchtsaft|orangensaft|apfelsaft|multivitaminsaft|gemüsesaft|nektar|smoothie|direktsaft|\\bsaft\\b|gespritzter", "ohne": "presse|zentrifuge|entsafter|glas|krug|karaffe|bonbon|gummi|kuchen|joghurt|eis\\b" }] },
+        { "id": "sirup", "name": "Sirup & Konzentrate",
+          "billa": ["sirupe-13794"],
+          "spar":  ["sirupe-konzentrate"],
+          "penny": [{ "pfad": "Alkoholfreie Getränke", "muster": "sirup|konzentrat" }],
+          "lidl":  [{ "pfad": "Getränke", "muster": "sirup|konzentrat" }],
+          "hofer": [{ "pfad": "Alle", "muster": "sirup", "ohne": "pancake|ahorn|waffel|kaffeesirup" }] },
+        { "id": "sport", "name": "Sport- & isotonische Getränke",
+          "billa": ["sportgetraenke-15661"],
+          "spar":  ["fluessige-isotonische-getraenke"],
+          "penny": [{ "pfad": "Alkoholfreie Getränke", "muster": "isoton|sport|powerade|gatorade" }],
+          "lidl":  [{ "pfad": "Getränke", "muster": "isoton|sportgetr|powerade|gatorade" }],
+          "hofer": [{ "pfad": "Alle", "muster": "isoton|sportgetr[äa]nk|powerade|gatorade" }] },
+        { "id": "eiskaffee", "name": "Eiskaffee & Kaffeegetränke",
+          "billa": ["eiskaffee-13786"],
+          "spar":  ["eiskaffee"],
+          "penny": [{ "pfad": "Alkoholfreie Getränke", "muster": "eiskaffee|ice coffee|cold brew|latte|cappuccino" }],
+          "lidl":  [{ "pfad": "Getränke", "muster": "eiskaffee|ice coffee|cold brew" }],
+          "hofer": [{ "pfad": "Alle", "muster": "eiskaffee|ice coffee|cold brew" }] },
+        { "id": "alkfrei-sonst", "name": "Sonstiges (Kindergetränke, stille Getränke …)",
+          "billa": ["kindergetraenke-13790"],
+          "spar":  ["stille-getraenke"],
+          "penny": [{ "pfad": "Alkoholfreie Getränke" }],
+          "lidl":  [{ "pfad": "Getränke" }],
+          "hofer": [] }
+      ]
+    },
+    {
+      "id": "werkzeug", "pos": 165,
+      "name": "Werkzeug",
+      "tipps": "parkside|werkzeug|akku-|bohrmaschine|bohrhammer|schrauber|kreiss[äa]ge|stichs[äa]ge|winkelschleifer|kompressor|werkbank",
+      "unter": [
+        { "id": "elektro", "name": "Elektro- & Akkuwerkzeug",
+          "lidl": [{ "pfad": "Elektrowerkzeuge" }, { "pfad": "Baumarkt & Garten", "muster": "akku|bohr|schrauber|s[äa]ge|schleifer|schwei[ßs]|kompressor|hobel|fr[äa]se|multitool|ladeger[äa]t|tacker|heißluft" }, { "pfad": "Marke:Parkside", "muster": "akku|bohr|schrauber|s[äa]ge|schleifer|schwei[ßs]|kompressor|hobel|fr[äa]se|multitool|ladeger[äa]t|tacker|heißluft" }],
+          "hofer": [{ "pfad": "Marke:FERREX" }, { "pfad": "Marke:WORKZONE", "muster": "akku|bohr|schrauber|s[äa]ge|schleifer|schwei[ßs]|kompressor|hobel|fr[äa]se|multitool|ladeger[äa]t|tacker|heißluft|thermometer|messger[äa]t" }] },
+        { "id": "werkstatt", "name": "Werkstatt & Handwerkzeug",
+          "lidl": [{ "pfad": "Werkstatt & Eisenwaren" }, { "pfad": "Handwerkzeuge" }, { "pfad": "Baumarkt & Garten", "muster": "regal|werkbank|zange|schraubendreher|bit|ratsche|hammer|koffer|box|leiter|wasserwaage" }],
+          "hofer": [{ "pfad": "Marke:WORKZONE", "ohne": "jacke|hose|handschuh|weste|schuh|socken|overall" }] },
+        { "id": "garten", "name": "Garten",
+          "lidl": [{ "pfad": "Baumarkt & Garten", "muster": "garten|rasen|hecke|laub|bew[äa]sser|schlauch|pflanz|ast|kettens[äa]ge|vertikutier|gie[ßs]" }],
+          "hofer": [{ "pfad": "Marke:GARDENLINE" }] },
+        { "id": "bauen", "name": "Bauen & Renovieren",
+          "lidl": [{ "pfad": "Bauen & Renovieren" }],
+          "hofer": [] },
+        { "id": "bekleidung", "name": "Arbeitsbekleidung",
+          "lidl": [{ "pfad": "Arbeitsbekleidung" }],
+          "hofer": [{ "pfad": "Marke:WORKZONE" }] },
+        { "id": "werkzeug-sonst", "name": "Sonstiges (Baumarkt & Parkside)",
+          "lidl": [{ "pfad": "Baumarkt & Garten" }, { "pfad": "Marke:Parkside" }],
+          "hofer": [] }
+      ]
+    },
+    {
+      "id": "tiefkuehl", "name": "Tiefkühl", "pos": 60,
+      "_hinweis": "Allgemeine Kategorien: Regeln unter 'alle' gelten fuer jeden Markt; pfadre = Regex auf die Kategorienamen des Shops, und = Regex, der zusaetzlich irgendwo im Kategoriepfad passen muss. Reihenfolge = Pruefreihenfolge; pos = Anzeigereihenfolge.",
+      "und": "tiefk|^TK-|gefrorene",
+      "unter": [
+        { "id": "tk-eis", "name": "Eis", "alle": [{ "pfadre": "^eis$|eiscreme|speiseeis|stieleis|^eis &|& eis$" }] },
+        { "id": "tk-pizza", "name": "Pizza & Snacks", "alle": [{ "pfadre": "pizza|snack|baguette" }] },
+        { "id": "tk-kartoffel", "name": "Pommes & Kartoffelprodukte", "alle": [{ "pfadre": "kartoffel|pommes" }] },
+        { "id": "tk-fleisch", "name": "Fleisch & Fisch", "alle": [{ "pfadre": "fleisch|fisch|geflügel|gefluegel|meeresfr" }] },
+        { "id": "tk-gemuese", "name": "Gemüse, Obst & Kräuter", "alle": [{ "pfadre": "gemüse|gemuese|obst|kräuter|kraeuter" }] },
+        { "id": "tk-backwaren", "name": "Backwaren & Mehlspeisen", "alle": [{ "pfadre": "back|mehlspeis|kuchen|torte|strudel" }] },
+        { "id": "tk-gerichte", "name": "Fertiggerichte", "alle": [{ "pfadre": "gericht|menü|menue|knödel|knoedel" }] },
+        { "id": "tk-sonst", "name": "Sonstiges Tiefkühl", "alle": [{ "pfadre": "tiefk|^TK-|gefrorene" }] }
+      ]
+    },
+    {
+      "id": "baby", "name": "Baby & Kind", "pos": 150,
+      "und": "baby|kleinkind",
+      "unter": [
+        { "id": "baby-nahrung", "name": "Babynahrung & Snacks", "alle": [{ "pfadre": "nahrung|glas|brei|snack|quetsch|milchpulver|folgemilch|getränke|getraenke" }] },
+        { "id": "baby-pflege", "name": "Windeln & Pflege", "alle": [{ "pfadre": "pflege|windel|wickel" }] },
+        { "id": "baby-sonst", "name": "Sonstiges Baby", "alle": [{ "pfadre": "^baby|kleinkind|babynahrung" }] }
+      ]
+    },
+    {
+      "id": "tier", "name": "Tierbedarf", "pos": 160,
+      "und": "tier|haustier",
+      "unter": [
+        { "id": "hund", "name": "Hund", "alle": [{ "pfadre": "hund" }] },
+        { "id": "katze", "name": "Katze", "alle": [{ "pfadre": "katze" }] },
+        { "id": "tier-sonst", "name": "Sonstige Tiere & Zubehör", "alle": [{ "pfadre": "tier" }] }
+      ]
+    },
+    {
+      "id": "drogerie", "name": "Drogerie & Kosmetik", "pos": 130,
+      "und": "drogerie|kosmetik|beauty|körperpflege|koerperpflege",
+      "unter": [
+        { "id": "haare", "name": "Haarpflege & Styling", "alle": [{ "pfadre": "haar" }] },
+        { "id": "zahn", "name": "Zahn- & Mundpflege", "alle": [{ "pfadre": "zahn|mund" }] },
+        { "id": "rasur", "name": "Rasur", "alle": [{ "pfadre": "rasur|rasier" }] },
+        { "id": "koerper", "name": "Körperpflege, Dusche & Deo", "alle": [{ "pfadre": "körper|koerper|dusch|bad|seife|deo|hand|sonne" }] },
+        { "id": "gesicht", "name": "Gesicht & Kosmetik", "alle": [{ "pfadre": "gesicht|kosmetik|make|schmink|creme|lippen|nagel|parfum|duft" }] },
+        { "id": "hygiene", "name": "Hygiene & Papier", "alle": [{ "pfadre": "hygiene|papier|damen|watte|taschent|inkontinenz" }] },
+        { "id": "gesundheit", "name": "Gesundheit", "alle": [{ "pfadre": "gesundheit|apotheke|pflaster|vitamin|nahrungserg|erste hilfe|verhütung|verhuetung" }] },
+        { "id": "drogerie-sonst", "name": "Sonstige Drogerie", "alle": [{ "pfadre": "drogerie|kosmetik|beauty|pflege" }] }
+      ]
+    },
+    {
+      "id": "haushalt", "name": "Haushalt & Garten", "pos": 140,
+      "und": "haushalt|garten",
+      "unter": [
+        { "id": "papier", "name": "Küchenrolle, WC-Papier & Servietten", "alle": [{ "pfadre": "küchenrolle|kuechenrolle|wc.?papier|toilettenpapier|taschentücher|serviette" }] },
+        { "id": "reinigen", "name": "Putzen & Reinigen", "alle": [{ "pfadre": "putz|reinig|spül|spuel|geschirrsp|entkalk" }] },
+        { "id": "waschen", "name": "Waschen & Bügeln", "alle": [{ "pfadre": "wasch|weichsp|bügel|buegel" }] },
+        { "id": "folien", "name": "Folien, Beutel & Aufbewahrung", "alle": [{ "pfadre": "beutel|folie|gefrier|müll|muell|aufbewahr" }] },
+        { "id": "kerzen", "name": "Kerzen & Raumduft", "alle": [{ "pfadre": "kerze|lufterfr|raumduft|raumspray" }] },
+        { "id": "batterien", "name": "Batterien & Leuchtmittel", "alle": [{ "pfadre": "batter|leuchtmittel|glühbirne|gluehbirne" }] },
+        { "id": "garten", "name": "Garten, Pflanzen & Blumen", "alle": [{ "pfadre": "garten|pflanze|blume" }] },
+        { "id": "kueche", "name": "Küche & Haushaltswaren", "alle": [{ "pfadre": "küche|kueche|kochgeschirr|haushaltswaren|haushaltsartikel|gedeckter tisch|geschirr" }] },
+        { "id": "haushalt-sonst", "name": "Sonstiger Haushalt", "alle": [{ "pfadre": "haushalt|büro|buero" }] }
+      ]
+    },
+    {
+      "id": "nonfood", "name": "Spielzeug, Mode & Non-Food", "pos": 170,
+      "unter": [
+        { "id": "spielzeug", "name": "Spielzeug & Spiele", "alle": [{ "pfadre": "spielzeug|spielware|spiele|basteln|handarbeit|malen" }] },
+        { "id": "mode", "name": "Mode, Schuhe & Textilien", "alle": [{ "pfadre": "^mode|mode &|herrenmode|damenmode|kindermode|textil|bekleidung|schuhe|bettwäsche|socken" }] },
+        { "id": "technik", "name": "Elektronik & Technik", "alle": [{ "pfadre": "elektronik|multimedia|technik|computer|handy|elektrogeräte|elektrogeraete" }] },
+        { "id": "wohnen", "name": "Wohnen, Deko & Beleuchtung", "alle": [{ "pfadre": "wohnen|einrichtung|dekoration|beleuchtung|möbel|moebel" }] },
+        { "id": "freizeit", "name": "Sport, Freizeit & Reise", "alle": [{ "pfadre": "sport & freizeit|freizeit|reise|camping|fahrrad|outdoor|sportartikel" }] },
+        { "id": "nonfood-sonst", "name": "Sonstiges Non-Food", "alle": [{ "pfadre": "non-food|nonfood|bürobedarf|buerobedarf|bücher|buecher|zeitschrift" }] }
+      ]
+    },
+    {
+      "id": "obst-gemuese", "name": "Obst & Gemüse", "pos": 10,
+      "und": "obst|gemüse|gemuese",
+      "unter": [
+        { "id": "trocken", "name": "Nüsse & Trockenfrüchte", "alle": [{ "pfadre": "trockenfr|nüsse|nuesse" }] },
+        { "id": "salat", "name": "Salate, Kräuter & Pilze", "alle": [{ "pfadre": "^salate?$|^salat|kräuter|kraeuter|^pilze|sprossen" }] },
+        { "id": "obst", "name": "Obst", "alle": [{ "pfadre": "^obst$|^frisches obst|beeren|südfr|suedfr|zitrus|kernobst|steinobst|exotisch" }] },
+        { "id": "gemuese", "name": "Gemüse & Kartoffeln", "alle": [{ "pfadre": "^gemüse$|^gemuese$|^frisches gemüse|kartoffel|zwiebel" }] },
+        { "id": "og-sonst", "name": "Obst & Gemüse (sonstiges)", "alle": [{ "pfadre": "obst|gemüse|gemuese" }] }
+      ]
+    },
+    {
+      "id": "fruehstueck", "name": "Frühstück & Aufstriche", "pos": 30,
+      "unter": [
+        { "id": "muesli", "name": "Müsli, Cerealien & H-Milch", "alle": [{ "pfadre": "cereal|müsli|muesli|flocken|frühstücks|fruehstuecks|porridge" }] },
+        { "id": "suesse-aufstriche", "name": "Honig, Marmelade & süße Aufstriche", "alle": [{ "pfadre": "honig|marmelade|konfitüre|konfituere|süße aufstriche|suesse aufstriche|nuss-nougat|brotaufstrich" }] }
+      ]
+    },
+    {
+      "id": "brot", "name": "Brot & Gebäck", "pos": 20,
+      "unter": [
+        { "id": "knaecke", "name": "Knäckebrot, Zwieback & Brösel", "alle": [{ "pfadre": "knäcke|knaecke|zwieback|reiswaffel|brösel|broesel|semmelwürfel|semmelwuerfel" }] },
+        { "id": "suessgebaeck", "name": "Kuchen & süßes Gebäck", "alle": [{ "pfadre": "konditorei|kuchen|süße backwaren|suesse backwaren|süßgebäck|suessgebaeck|süßes gebäck|plunder|krapfen" }] },
+        { "id": "brot", "name": "Brot & Gebäck", "alle": [{ "pfadre": "^brot|brot &|gebäck$|gebaeck$|^semmel|backwaren|backbox|^brezen|brötchen|broetchen|ofenfrisch|bäckerei|baeckerei" }] }
+      ]
+    },
+    {
+      "id": "milch", "name": "Milchprodukte, Käse & Eier", "pos": 40,
+      "unter": [
+        { "id": "eier", "name": "Eier", "alle": [{ "pfadre": "^eier$|^eier |eier$" }] },
+        { "id": "kaese", "name": "Käse", "alle": [{ "pfadre": "käse|kaese" }] },
+        { "id": "joghurt", "name": "Joghurt, Topfen & Desserts", "alle": [{ "pfadre": "joghurt|dessert|pudding|topfen|quark" }] },
+        { "id": "milch-butter", "name": "Milch, Butter & Obers", "alle": [{ "pfadre": "milch|butter|obers|rahm|sahne" }] },
+        { "id": "aufstriche", "name": "Aufstriche, Antipasti & Salate", "alle": [{ "pfadre": "antipasti|feinkost|^aufstriche|aufstriche & salate" }] },
+        { "id": "teige", "name": "Teige zum Backen", "alle": [{ "pfadre": "backfertige teige|blätterteig|blaetterteig|strudelteig" }] },
+        { "id": "milch-sonst", "name": "Sonstiges Kühlregal", "alle": [{ "pfadre": "kühlwaren|kuehlwaren|kühlregal|kuehlregal|milchprodukte" }] }
+      ]
+    },
+    {
+      "id": "wurst", "name": "Wurst & Schinken", "pos": 55,
+      "unter": [
+        { "id": "schinken", "name": "Schinken & Speck", "alle": [{ "pfadre": "^schinken|^speck|^selch|^rohschinken|^kochschinken" }] },
+        { "id": "wuerstel", "name": "Würstel", "alle": [{ "pfadre": "^würstel|^wuerstel|würstchen|^würste" }] },
+        { "id": "streichwurst", "name": "Streichwurst & Pasteten", "alle": [{ "pfadre": "^streichwurst|pastete|leberwurst" }] },
+        { "id": "wurst", "name": "Wurst & Aufschnitt", "alle": [{ "pfadre": "^wurst|^aufschnitt|^salami|^dauerwurst|wurst-selchwaren" }] }
+      ]
+    },
+    {
+      "id": "fisch", "name": "Fisch & Meeresfrüchte", "pos": 56,
+      "unter": [
+        { "id": "fisch", "name": "Fisch & Meeresfrüchte", "alle": [{ "pfadre": "^fisch|meeresfr|garnel|lachs|thunfisch|fisch-meeresfruechte" }] }
+      ]
+    },
+    {
+      "id": "suess", "name": "Süßes & Knabbereien", "pos": 90,
+      "unter": [
+        { "id": "schoko", "name": "Schokolade & Pralinen", "alle": [{ "pfadre": "schoko|praline|confiserie" }] },
+        { "id": "kekse", "name": "Kekse, Waffeln & Schnitten", "alle": [{ "pfadre": "keks|biskot|waffel|schnitten" }] },
+        { "id": "riegel", "name": "Müsli- & Fruchtriegel", "alle": [{ "pfadre": "riegel" }] },
+        { "id": "chips", "name": "Chips & Knabbereien", "alle": [{ "pfadre": "chips|knabber|salzig|salzgebäck|salzgebaeck|popcorn|snacks" }] },
+        { "id": "zuckerl", "name": "Zuckerl, Fruchtgummi & Kaugummi", "alle": [{ "pfadre": "zuckerl|bonbon|kaugummi|fruchtgummi|süßwaren|suesswaren|gummi" }] },
+        { "id": "suess-sonst", "name": "Sonstiges Süßes", "alle": [{ "pfadre": "süß|suess|süss" }] }
+      ]
+    },
+    {
+      "id": "saisonal", "name": "Saisonales", "pos": 100,
+      "unter": [
+        { "id": "weihnachten", "name": "Weihnachten & Advent", "alle": [{ "pfadre": "weihnacht|advent|lebkuchen|christmas" }] },
+        { "id": "ostern", "name": "Ostern", "alle": [{ "pfadre": "ostern" }] },
+        { "id": "saison-sonst", "name": "Sonstiges Saisonales", "alle": [{ "pfadre": "saison|black month|halloween" }] }
+      ]
+    },
+    {
+      "id": "tee", "name": "Tee & Kakao", "pos": 75,
+      "unter": [
+        { "id": "tee", "name": "Tee", "alle": [{ "pfadre": "^tee$|^tee |tee &|früchtetee|kräutertee|schwarztee|grüntee" }] },
+        { "id": "kakao", "name": "Kakao & Trinkschokolade", "alle": [{ "pfadre": "kakao|trinkschoko" }] }
+      ]
+    },
+    {
+      "id": "fertig", "name": "Fertiggerichte & Schnelle Küche", "pos": 58,
+      "unter": [
+        { "id": "fertig-gekuehlt", "name": "Fertiggerichte & Salate to go", "alle": [{ "pfadre": "fertiggericht|to go|to-go|schnelle küche|schnelle kueche|sandwich|frisch gekocht|platten|picknick" }] },
+        { "id": "frische-pasta", "name": "Frische Pasta & Teige", "alle": [{ "pfadre": "frische teige|frische pasta" }] },
+        { "id": "suppen", "name": "Suppen & Eintöpfe", "alle": [{ "pfadre": "suppe|eintopf" }] }
+      ]
+    },
+    {
+      "id": "vorrat", "name": "Vorrat & Kochen", "pos": 70,
+      "unter": [
+        { "id": "reis", "name": "Reis, Getreide & Hülsenfrüchte", "alle": [{ "pfadre": "^reis|reis &|getreide|hülsenfr|huelsenfr|couscous|bulgur|beilagen|knödel|knoedel|püree|pueree" }] },
+        { "id": "mehl-backen", "name": "Mehl, Zucker & Backen", "alle": [{ "pfadre": "mehl|^backen|backzutat|zucker|süßungs|suessungs" }] },
+        { "id": "konserven", "name": "Konserven & Sauerwaren", "alle": [{ "pfadre": "konserv|sauerwaren|essiggurk|eingelegt" }] },
+        { "id": "tomaten", "name": "Tomaten, Sugo & Pesto", "alle": [{ "pfadre": "tomat|sugo|pesto" }] },
+        { "id": "oel", "name": "Öl, Essig & Gewürze", "alle": [{ "pfadre": "^öl|öle|oel|essig|gewürz|gewuerz|^salz" }] },
+        { "id": "saucen", "name": "Saucen, Dressings & Kochzutaten", "alle": [{ "pfadre": "sauce|soße|dressing|ketchup|senf|mayon|kochzutat|brühe|bruehe|fond" }] },
+        { "id": "international", "name": "Internationale Küche", "alle": [{ "pfadre": "international|asia|mexik|orient" }] },
+        { "id": "sport", "name": "Sport- & Nahrungsergänzung", "alle": [{ "pfadre": "nahrungsergänzung|nahrungsergaenzung|protein|^sport &" }] },
+        { "id": "pflanzlich", "name": "Rein pflanzliche Vorräte & Ersatz", "alle": [{ "pfadre": "pflanzlich|ersatz|vegan" }] },
+        { "id": "vorrat-sonst", "name": "Sonstiger Vorrat", "alle": [{ "pfadre": "vorrat|lebensmittelvorrat|grundnahrungsmittel" }] }
+      ]
+    },
+    {
+      "id": "sonstiges", "name": "Sonstiges", "pos": 999,
+      "unter": [
+        { "id": "hofer-angebote", "name": "Hofer-Angebote ohne Kategorie", "hofer": [{ "pfad": "Alle" }] },
+        { "id": "rest", "name": "Nicht zugeordnet" }
+      ]
+    }
+  ],
+
+  "ausschluss": {
+    "_hinweis": "Stichworte (Teil des Namens, Gross-/Kleinschreibung egal) und Kategorie-Namen, die nie gespeichert werden.",
+    "stichworte": ["vegan", "veggie", "vegetarisch", "planted", "fleischersatz", "pflanzlich", "geschenk", "gutschein", "glas set", "gläser"],
+    "kategorien": ["Mehrweg", "Eiswürfel"]
+  },
+
+  "ausgeblendet": [],
+
+  "auswertung": {
+    "_hinweis": "Schwellen fuer die Bewertung auf der Seite. Prozent als Zahl (10 = 10 %).",
+    "tageMedian": 90,
+    "minTageHistorie": 21,
+    "echtesAngebotAb": 10,
+    "lockvogelUnter": 3,
+    "erhoehungVorAktionTage": 45,
+    "erhoehungVorAktionAb": 3,
+    "dauerAktionAnteil": 50
+  }
+}

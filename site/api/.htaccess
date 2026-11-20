@@ -1,0 +1,4 @@
+# Interne PHP-Dateien nicht direkt aufrufbar
+<FilesMatch "^(config|config\.beispiel|db)\.php$">
+    Require all denied
+</FilesMatch>

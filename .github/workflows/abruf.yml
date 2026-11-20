@@ -1,0 +1,52 @@
+# Holt einmal taeglich das Gesamtsortiment aller Maerkte, schreibt die Historie fort
+# und laedt die Daten-Dateien (site/daten/) auf den Webspace.
+# Oeffentliches Repo -> Actions-Minuten sind kostenlos (Spar allein dauert gut eine Stunde).
+name: Preise abrufen
+
+on:
+  schedule:
+    - cron: '23 4 * * *'     # taeglich 04:23 UTC (05:23/06:23 in Wien)
+  workflow_dispatch:
+
+permissions:
+  contents: write            # Historie und Spar-Kategorien im Repo speichern
+
+concurrency:
+  group: preise-abruf
+  cancel-in-progress: false
+
+jobs:
+  abruf:
+    # Erst aktiv, wenn die Repo-Variable AKTIV=ja gesetzt ist (nach Einrichtung von Webspace und Secrets)
+    if: ${{ vars.AKTIV == 'ja' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Preise abrufen und Historie fortschreiben
+        shell: pwsh
+        run: ./abrufen.ps1
+
+      - name: Daten per FTP hochladen
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOKOLL || 'ftps' }}
+          local-dir: ./site/daten/
+          server-dir: ${{ vars.FTP_ZIELORDNER || './' }}daten/
+          state-name: .ftp-deploy-daten.json
+          log-level: minimal
+
+      - name: Historie speichern
+        run: |
+          git add daten/historie.json daten/spar-kategorien.json
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -q -m "Preis-Historie aktualisiert"
+            git pull --rebase -q
+            git push -q
+          fi

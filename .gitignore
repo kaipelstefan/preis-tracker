@@ -1,0 +1,12 @@
+# wird vom Abruf erzeugt (liegt nur auf dem Webspace)
+site/daten/
+site/daten.js
+upload/
+
+# Zugangsdaten und private Daten - NIE ins (oeffentliche) Repo
+site/api/config.php
+site/.htaccess
+site/rechnungen/
+rechnungen/
+
+.claude/
