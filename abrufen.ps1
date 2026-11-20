@@ -403,7 +403,7 @@ function Hole-Alles([string]$Markt) {
         $dateien = @(Get-ChildItem -Path $RohLesen -Filter 'roh-*.json' -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $muster })
         if (-not $dateien.Count) { throw "Keine Rohdaten fuer $Markt in $RohLesen" }
         $soll = if ($Konfig.abruf -and $Konfig.abruf.teile -and $Konfig.abruf.teile.$Markt) { [int]$Konfig.abruf.teile.$Markt } else { 1 }
-        if ($dateien.Count -lt $soll) { Melde-Teilfehler "$Markt`: nur $($dateien.Count) von $soll Teilen" ([pscustomobject]@{ Exception = [pscustomobject]@{ Message = 'Teil fehlt' } }) }
+        if ($dateien.Count -lt $soll) { Melde-Teilfehler "$Markt`: erst $($dateien.Count) von $soll Teilen" ([pscustomobject]@{ Exception = [pscustomobject]@{ Message = 'Teil fehlt' } }) }
         foreach ($f in $dateien) {
             $daten = Lies-Json $f.FullName   # erst zuweisen: PS 5.1 liefert ein JSON-Array sonst als ein Objekt
             foreach ($x in $daten) {
@@ -582,7 +582,11 @@ function Hole-Tipps {
 
 # ---------------------------------------------------------------- Abruf
 # Ohne -Maerkte gilt die Liste aus konfig.json ("abruf.maerkte"); neue Shops nur dort ergaenzen
-if (-not $PSBoundParameters.ContainsKey('Maerkte') -and $Konfig.abruf -and $Konfig.abruf.maerkte) { $Maerkte = @($Konfig.abruf.maerkte) }
+if (-not $PSBoundParameters.ContainsKey('Maerkte') -and $Konfig.abruf -and $Konfig.abruf.maerkte) {
+    $Maerkte = @($Konfig.abruf.maerkte)
+    # Beim Zusammenfuehren (GitHub) fehlen "nur lokal" abgerufene Maerkte - ihr Stand bleibt aus der Historie
+    if ($RohLesen -and $Konfig.abruf.nur_lokal) { $Maerkte = @($Maerkte | Where-Object { @($Konfig.abruf.nur_lokal) -notcontains $_ }) }
+}
 $Maerkte = @($Maerkte | ForEach-Object { $_ -split '[,; ]+' } | Where-Object { $_ })   # "-File" liefert Listen als einen String
 
 # Nur abrufen und Rohdaten schreiben (Teil eines parallelen Abrufs); Zuordnung und Historie macht der Zusammenfuehr-Lauf

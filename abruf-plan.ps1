@@ -8,7 +8,9 @@
 $Utf8 = New-Object Text.UTF8Encoding $false
 $k = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'konfig.json'), $Utf8) | ConvertFrom-Json
 $schnell = @(); $langsam = @()
+$nurLokal = @($k.abruf.nur_lokal)
 foreach ($m in $k.abruf.maerkte) {
+    if ($nurLokal -contains $m) { continue }   # z. B. Spar: sperrt GitHub-Server (HTTP 403)
     $n = if ($k.abruf.teile.$m) { [int]$k.abruf.teile.$m } else { 0 }
     if ($n -gt 0) { for ($i = 0; $i -lt $n; $i++) { $langsam += [ordered]@{ markt = $m; teil = $i; teile = $n } } }
     else { $schnell += [string]$m }
