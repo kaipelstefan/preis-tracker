@@ -37,13 +37,14 @@ Rechnungen lädt Stefan auf preise.kaipel.at im Reiter **Einkäufe** hoch (Foto 
     { "name_bon": "CLEVER H-MILCH 3,5%", "artikel_id": "billa:00-123456", "menge": 2, "einheit": "stk",
       "einzelpreis": 1.19, "gesamt": 2.38, "rabatt": 0, "aktion": 0, "normalpreis": 1.19 },
     { "name_bon": "TCHIBO FEINE MILDE 500G", "artikel_id": "billa:00-284795", "menge": 1, "einheit": "stk",
-      "einzelpreis": 7.99, "gesamt": 5.99, "rabatt": 2.00, "aktion": 1, "normalpreis": 7.99 },
+      "einzelpreis": 5.99, "gesamt": 5.99, "rabatt": 2.00, "aktion": 1, "normalpreis": 7.99 },
     { "name_bon": "BANANEN", "artikel_id": null, "menge": 1.234, "einheit": "kg",
       "einzelpreis": 1.79, "gesamt": 2.21, "rabatt": 0, "aktion": 0 }
   ]
 }
 ```
 
+- **`einzelpreis`:** tatsächlich bezahlter Preis je Stück bzw. kg, nach Rabatt (= `gesamt` / `menge`). Der Normalpreis steht getrennt in `normalpreis`.
 - **`gesamt`:** tatsächlich bezahlt für die Zeile, nach Abzug des Rabatts.
 - **`rabatt`:** Ersparnis dieser Zeile. Steht der Rabatt am Bon als eigene Zeile (z. B. „Aktion −2,00“), gehört er zur Position darüber.
 - **Ersparnis des Einkaufs:** Der Server nimmt die Summe der `rabatt`-Werte oder `rabatt_bon`, je nachdem, was größer ist.
