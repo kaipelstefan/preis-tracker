@@ -27,6 +27,12 @@ css.textContent = [
   '.ek-upload { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }',
   '.ek-upload label.knopf { border: 1px solid var(--akzent); background: var(--akzent); color: #fff; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-weight: 600; }',
   '.ek-upload input[type=file] { display: none; }',
+  '.ek-upload label.knopf-zwei { background: var(--fl); color: var(--akzent); }',
+  '.ek-vorschau { margin-top: 10px; }',
+  '.ek-bilder { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }',
+  '.ek-bilder canvas { height: 160px; width: auto; border: 1px solid var(--linie); border-radius: 6px; background: #fff; flex: 0 0 auto; }',
+  '.ek-aktionen .ek-haupt { background: var(--akzent); border-color: var(--akzent); color: #fff; font-weight: 600; }',
+  '.ek-weiter { border: 1px solid var(--linie); background: var(--bg); border-radius: 8px; padding: 5px 10px; font-size: 13px; cursor: pointer; }',
   '.ek-rechnung summary { cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; list-style: none; }',
   '.ek-rechnung summary::-webkit-details-marker { display: none; }',
   '.ek-rechnung .meta { color: var(--leise); font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }',
@@ -86,8 +92,10 @@ function laden() {
 function zeichne() {
   var d = DATEN, g = d.gesamt, h = '';
   // Hochladen
-  h += '<div class="ek-karte"><div class="ek-upload"><label class="knopf">📷 Rechnung hochladen<input type="file" id="ek-datei" accept="image/*,application/pdf" multiple></label>' +
-       '<span id="ek-status" style="color:var(--leise);font-size:13px">Foto oder PDF. Ausgewertet wird in Claude Code („werte die neuen Rechnungen aus“).</span></div></div>';
+  h += '<div class="ek-karte"><div class="ek-upload"><label class="knopf">📷 Rechnung fotografieren<input type="file" id="ek-foto" accept="image/*" capture="environment"></label>' +
+       '<label class="knopf knopf-zwei">📄 Datei wählen<input type="file" id="ek-datei" accept="image/*,application/pdf" multiple></label>' +
+       '<span id="ek-status" style="color:var(--leise);font-size:13px">Foto oder PDF. Ausgewertet wird in Claude Code („werte die neuen Rechnungen aus“).</span></div>' +
+       '<div id="ek-vorschau" class="ek-vorschau" hidden></div></div>';
   // Summen
   var quote = g.summe + g.ersparnis > 0 ? 100 * g.ersparnis / (g.summe + g.ersparnis) : 0;
   h += '<div class="ek-karte ek-summen">' +
@@ -128,6 +136,74 @@ function zeichne() {
   });
   bereich.innerHTML = h;
   $('ek-datei').onchange = function () { hochladen(Array.prototype.slice.call(this.files)); };
+  $('ek-foto').onchange = function () { var f = this.files[0]; this.value = ''; if (f) fotoDazu(f); };
+  if (FOTOS.length) zeigeVorschau();
+}
+
+// ------------------------------------------------------------------ Rechnung fotografieren
+// Lange Rechnungen: mehrere Fotos nacheinander, sie werden untereinander zu einem Bild zusammengesetzt.
+// Vor dem Hochladen verkleinert (schneller Upload im Geschaeft, Text bleibt gut lesbar).
+var FOTOS = [];   // geladene Bilder (HTMLImageElement / ImageBitmap) in Reihenfolge
+function bildLaden(datei) {
+  if (window.createImageBitmap) return createImageBitmap(datei, { imageOrientation: 'from-image' }).catch(function () { return bildLadenAlt(datei); });
+  return bildLadenAlt(datei);
+}
+function bildLadenAlt(datei) {
+  return new Promise(function (ok, fehler) {
+    var url = URL.createObjectURL(datei), img = new Image();
+    img.onload = function () { ok(img); }; img.onerror = function () { URL.revokeObjectURL(url); fehler(new Error('Foto konnte nicht gelesen werden')); };
+    img.src = url;
+  });
+}
+function fotoDazu(datei) {
+  var st = $('ek-status'); if (st) st.textContent = 'Foto wird vorbereitet …';
+  bildLaden(datei).then(function (b) { FOTOS.push(b); zeigeVorschau(); }, function (e) {
+    // Kann der Browser das Format nicht anzeigen (z. B. HEIC), die Datei unveraendert hochladen
+    if (st) st.textContent = e.message + ' – wird unverändert hochgeladen.';
+    hochladen([datei]);
+  });
+}
+function zusammensetzen() {
+  // gemeinsame Breite: schmalstes Foto, hoechstens 1600 px; Gesamthoehe fuer Handy-Browser begrenzt
+  var breite = Math.min(1600, Math.min.apply(null, FOTOS.map(function (b) { return b.width; })));
+  var hoehen = FOTOS.map(function (b) { return Math.round(b.height * breite / b.width); });
+  var gesamt = hoehen.reduce(function (s, x) { return s + x; }, 0);
+  // ein Foto: laengste Seite hoechstens 2600 px; mehrere: Hoehe hoechstens 14000 px;
+  // dazu hoechstens 16 Mio. Bildpunkte (Grenze von Safari am iPhone)
+  var f = FOTOS.length === 1 ? Math.min(1, 2600 / Math.max(breite, gesamt)) : Math.min(1, 14000 / gesamt);
+  f = Math.min(f, Math.sqrt(16e6 / (breite * gesamt)));
+  var c = document.createElement('canvas');
+  c.width = Math.round(breite * f); c.height = Math.round(gesamt * f);
+  var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  var y = 0;
+  FOTOS.forEach(function (b, i) { var h = Math.round(hoehen[i] * f); ctx.drawImage(b, 0, y, c.width, h); y += h; });
+  return new Promise(function (ok) { c.toBlob(function (blob) { ok(blob); }, 'image/jpeg', 0.85); });
+}
+function zeigeVorschau() {
+  var box = $('ek-vorschau'); if (!box) return;
+  box.hidden = !FOTOS.length;
+  if (!FOTOS.length) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="ek-bilder" id="ek-bilder"></div>' +
+    '<div class="ek-aktionen"><button class="ek-haupt" id="ek-senden">⬆ Rechnung hochladen' + (FOTOS.length > 1 ? ' (' + FOTOS.length + ' Fotos)' : '') + '</button>' +
+    '<label class="ek-weiter">＋ Weiteres Foto (lange Rechnung)<input type="file" id="ek-foto2" accept="image/*" capture="environment" hidden></label>' +
+    '<button id="ek-verwerfen">Verwerfen</button></div>' +
+    '<p style="color:var(--leise);font-size:12px;margin:6px 0 0">Tipp: Rechnung flach hinlegen, gut ausleuchten. Bei langen Rechnungen von oben nach unten in Teilen fotografieren – die Fotos werden zusammengesetzt.</p>';
+  FOTOS.forEach(function (b) {
+    var c = document.createElement('canvas'), h = 160, w = Math.round(b.width * h / b.height);
+    c.width = w; c.height = h; c.getContext('2d').drawImage(b, 0, 0, w, h);
+    $('ek-bilder').appendChild(c);
+  });
+  var st = $('ek-status'); if (st) st.textContent = 'Foto bereit. Lesbar? Dann hochladen – oder weiteres Foto anfügen.';
+  $('ek-foto2').onchange = function () { var f = this.files[0]; this.value = ''; if (f) fotoDazu(f); };
+  $('ek-verwerfen').onclick = function () { FOTOS = []; zeigeVorschau(); var s = $('ek-status'); if (s) s.textContent = 'Verworfen.'; };
+  $('ek-senden').onclick = function () {
+    this.disabled = true; var s = $('ek-status'); if (s) s.textContent = 'Wird hochgeladen …';
+    zusammensetzen().then(function (blob) {
+      FOTOS = [];
+      var name = 'rechnung-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.jpg';
+      hochladen([new File([blob], name, { type: 'image/jpeg' })]);
+    });
+  };
 }
 
 function hochladen(dateien) {
