@@ -1,0 +1,82 @@
+# Baut die Seite aus der gespeicherten Historie neu auf - OHNE Artikel-Download bei den Shops.
+# Startet automatisch, wenn sich konfig.json aendert (z. B. Kategorie weglassen, Ausschluesse),
+# damit solche Aenderungen sofort sichtbar sind und nicht erst nach dem naechsten taeglichen Abruf.
+# Neue Zuordnungsregeln (pfadre, Shop-Kategorien) brauchen die Shop-Pfade und greifen erst beim taeglichen Abruf.
+name: Seite neu aufbauen
+
+on:
+  push:
+    branches: [main]
+    paths: ['konfig.json']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: preise-abruf          # nie gleichzeitig mit dem taeglichen Abruf (beide speichern die Historie)
+  cancel-in-progress: false
+
+jobs:
+  seite:
+    if: ${{ vars.AKTIV == 'ja' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Kategorie-Korrekturen vom Webspace holen
+        continue-on-error: true
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME || secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PROTOKOLL: ${{ vars.FTP_PROTOKOLL || 'ftps' }}
+          FTP_ZIELORDNER: ${{ vars.FTP_ZIELORDNER || './' }}
+        run: |
+          ssl=""; [ "$FTP_PROTOKOLL" != "ftp" ] && ssl="--ssl-reqd"
+          pfad="${FTP_ZIELORDNER#./}"
+          if curl -sS -k $ssl --max-time 60 -u "$FTP_USER:$FTP_PASSWORD" "ftp://$FTP_SERVER/${pfad}eigene/zuordnung.json" -o /tmp/zuordnung.json && python3 -c "import json; json.load(open('/tmp/zuordnung.json'))"; then
+            mv /tmp/zuordnung.json daten/zuordnung.json && echo "Korrekturen vom Webspace geholt"
+          else
+            echo "Keine Korrekturen vom Webspace - Stand aus dem Repo wird verwendet"
+          fi
+
+      - name: Seite aus der Historie neu erzeugen (kein Abruf)
+        shell: pwsh
+        run: ./abrufen.ps1 -NurSeite
+
+      - name: Daten per FTP hochladen
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME || secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOKOLL || 'ftps' }}
+          local-dir: ./site/daten/
+          server-dir: ${{ vars.FTP_ZIELORDNER || './' }}daten/
+          state-name: .ftp-deploy-daten.json
+          log-level: minimal
+
+      - name: Bereinigte Historie speichern
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          dateien="daten/historie.json daten/zuordnung.json"
+          for versuch in 1 2 3; do
+            git add $dateien
+            if git diff --cached --quiet; then echo "Keine Aenderung"; exit 0; fi
+            git commit -q -m "Seite aus der Historie neu aufgebaut (konfig.json geaendert)"
+            if git pull --rebase -q && git push -q; then echo "Gespeichert (Versuch $versuch)"; exit 0; fi
+            echo "Konflikt - auf dem neuesten Stand nochmals bereinigen (Versuch $versuch)"
+            git rebase --abort 2>/dev/null || true
+            cp daten/zuordnung.json /tmp/zuordnung.json
+            git reset -q HEAD~1
+            git checkout -- $dateien
+            git pull -q --ff-only
+            cp /tmp/zuordnung.json daten/zuordnung.json
+            pwsh -NoProfile -Command "./abrufen.ps1 -NurSeite"
+          done
+          echo "Historie konnte nicht gespeichert werden"; exit 1

@@ -82,6 +82,16 @@ Geplante Adresse: https://preise.kaipel.at (passwortgeschützt, noch nicht einge
   - `kat-<id>.js`: je Kategorie
 - **MySQL** (World4You): `pt_rechnung` und `pt_position` für Einkäufe. Das Schema legt `site/api/db.php` beim ersten Aufruf selbst an.
 
+## Was wann läuft (GitHub Actions)
+
+| Auslöser | Workflow | Was passiert | Shop-Download |
+|---|---|---|---|
+| Push in `site/**` (Code der Seite) | Webseite veroeffentlichen | Seite und PHP per FTP hochladen, ca. 30 s | nein |
+| Push von `konfig.json` | Seite neu aufbauen | Seite aus der gespeicherten Historie neu erzeugen (Kategorien weglassen, Ausschlüsse, Korrekturen), ca. 2 min | nein |
+| täglich 04:23 UTC (oder von Hand) | Preise abrufen | alle Märkte abrufen, Spar nur Angebote über den Webspace (`site/api/spar.php`) | ja |
+
+Neue Zuordnungsregeln (`pfadre`, Shop-Kategorien) brauchen die Kategoriepfade der Shops und wirken daher erst beim täglichen Abruf. Lokal: `abrufen.ps1 -NurSeite`.
+
 ## Online (preise.kaipel.at, noch einzurichten)
 
 - **Repo öffentlich**, damit GitHub Actions kostenlos bleiben. Im Repo liegen nur Code, Konfiguration und Preisdaten. Rechnungen und Zugangsdaten sind nie darin, siehe `.gitignore`.

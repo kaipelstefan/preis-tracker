@@ -19,7 +19,8 @@ param(
     [string]$RohSchreiben = '',  # Ordner: nur abrufen und Rohdaten je Markt dorthin schreiben, dann Ende
     [string]$RohLesen = '',      # Ordner: statt abzurufen die Rohdaten von dort lesen
     [Alias("SparTeil")][int]$Teil = -1,     # nur diesen Teil eines grossen Marktes abrufen (0 .. Teile-1), derzeit Spar
-    [Alias("SparTeile")][int]$Teile = 1     # in wie viele Teile der Markt aufgeteilt ist
+    [Alias("SparTeile")][int]$Teile = 1,    # in wie viele Teile der Markt aufgeteilt ist
+    [switch]$NurSeite                       # nichts abrufen: nur Historie mit aktueller konfig.json (weglassen, Korrekturen, Ausschluesse) bereinigen und die Seite neu erzeugen
 )
 
 $ErrorActionPreference = 'Stop'
@@ -614,6 +615,7 @@ if (-not $PSBoundParameters.ContainsKey('Maerkte') -and $Konfig.abruf -and $Konf
     if ($RohLesen -and $Konfig.abruf.nur_lokal) { $Maerkte = @($Maerkte | Where-Object { @($Konfig.abruf.nur_lokal) -notcontains $_ }) }
 }
 $Maerkte = @($Maerkte | ForEach-Object { $_ -split '[,; ]+' } | Where-Object { $_ })   # "-File" liefert Listen als einen String
+if ($NurSeite) { $Maerkte = @(); Write-Host 'Nur Seite neu erzeugen: kein Abruf, Historie mit aktueller konfig.json bereinigen' }
 
 # Nur abrufen und Rohdaten schreiben (Teil eines parallelen Abrufs); Zuordnung und Historie macht der Zusammenfuehr-Lauf
 if ($RohSchreiben) {
@@ -710,7 +712,7 @@ if ($Konfig.flugblaetter) {
     Write-Host ("Flugblaetter: {0} aktuell gueltig" -f $flugblaetter.Count)
 }
 $fehler += $script:Teilfehler
-if ($neu.Count -eq 0) { throw 'Kein einziger Artikel geladen - Abbruch, Historie bleibt unveraendert.' }
+if ($neu.Count -eq 0 -and -not $NurSeite) { throw 'Kein einziger Artikel geladen - Abbruch, Historie bleibt unveraendert.' }
 
 # ---------------------------------------------------------------- Historie fortschreiben
 # Eintrag: m Markt, n Name, k Kategorie, g Packung (Text), q Menge, e Einheit, u Link, b Bild, hs Hersteller/Marke, ea EAN (nur Lidl),
