@@ -635,7 +635,11 @@ if ($RohLesen) {
 
 # Kategorien mit "weglassen": true werden zwar zugeordnet (damit die Artikel nicht unter Sonstiges landen), aber nicht gespeichert
 $Weglassen = @{}
-foreach ($kat in @($Konfig.kategorien)) { if ($kat.weglassen) { $Weglassen[[string]$kat.id] = $true } }
+foreach ($kat in @($Konfig.kategorien)) {
+    if ($kat.weglassen) { $Weglassen[[string]$kat.id] = $true }
+    # auch einzelne Unterkategorien ("weglassen": true bei der Unterkategorie), Schluessel "kat/unter"
+    foreach ($u in @($kat.unter)) { if ($u -and $u.weglassen) { $Weglassen["$($kat.id)/$($u.id)"] = $true } }
+}
 
 # Haendische Kategorie-Korrekturen von der Seite (Artikel-Detail "Kategorie aendern").
 # Quelle: daten/zuordnung.json (holt der Abruf vorher vom Webspace, liegt auch im Repo). Gehen vor allen Regeln.
@@ -661,7 +665,7 @@ foreach ($markt in $Maerkte) {
         $script:Roh.Remove($markt)   # Rohdaten freigeben (Speicher)
         foreach ($s in $saetze) {
             if ($Korrektur.ContainsKey($s.key)) { $s.k = $Korrektur[$s.key][0]; $s.uk = $Korrektur[$s.key][1] }
-            if ($s.k -and $Weglassen.ContainsKey([string]$s.k)) { continue }
+            if ($s.k -and ($Weglassen.ContainsKey([string]$s.k) -or $Weglassen.ContainsKey("$($s.k)/$($s.uk)"))) { continue }
             if (-not $neu.ContainsKey($s.key)) { $neu[$s.key] = $s }
         }
         Write-Host ("  {0}: {1} Artikel" -f $markt, @($saetze).Count)
@@ -742,7 +746,9 @@ foreach ($key in @($hist.Keys)) {
     $e = $hist[$key]
     # Korrekturen auch fuer Artikel, deren Markt heute nicht abgerufen wurde (z. B. Spar vom PC)
     if ($Korrektur.ContainsKey($key)) { $e.k = $Korrektur[$key][0]; $e.uk = $Korrektur[$key][1] }
-    if ($Ausgeblendet.ContainsKey($key) -or $e.z -lt $grenze -or ($e.k -and $Weglassen.ContainsKey([string]$e.k))) { $hist.Remove($key); continue }
+    # Stichwort-Ausschluesse auch fuer schon gespeicherte Artikel (wirkt sofort, nicht erst nach Ablauf)
+    if ($AusRegex -and $e.n -and $AusRegex.IsMatch(([string]$e.n).ToLower())) { $hist.Remove($key); continue }
+    if ($Ausgeblendet.ContainsKey($key) -or $e.z -lt $grenze -or ($e.k -and ($Weglassen.ContainsKey([string]$e.k) -or $Weglassen.ContainsKey("$($e.k)/$($e.uk)")))) { $hist.Remove($key); continue }
     # Erst heute angelegt, beim jetzigen vollstaendigen Abruf aber nicht mehr zugeordnet
     # (z. B. nach einer Regelaenderung in konfig.json): wieder entfernen
     if ($e.a -eq $Heute -and $vollstaendig.ContainsKey($e.m) -and -not $neu.ContainsKey($key)) { $hist.Remove($key); $entfernt++ }
@@ -803,7 +809,7 @@ $katListe = New-Object Collections.ArrayList
 # Anzeigereihenfolge laut "pos" (Pruefreihenfolge bleibt die Reihenfolge in konfig.json)
 foreach ($kat in @($Konfig.kategorien | Sort-Object { if ($_.pos) { [int]$_.pos } else { 500 } })) {
     if ($kat.weglassen) { continue }
-    $unter = @($kat.unter | ForEach-Object { [ordered]@{ id = $_.id; name = $_.name; n = [int]$anzahlUk["$($kat.id)/$($_.id)"]; na = [int]$anzahlAktUk["$($kat.id)/$($_.id)"] } })
+    $unter = @($kat.unter | Where-Object { -not $_.weglassen } | ForEach-Object { [ordered]@{ id = $_.id; name = $_.name; n = [int]$anzahlUk["$($kat.id)/$($_.id)"]; na = [int]$anzahlAktUk["$($kat.id)/$($_.id)"] } })
     [void]$katListe.Add([ordered]@{ id = $kat.id; name = $kat.name; n = [int]$anzahl[$kat.id]; na = [int]$anzahlAkt[$kat.id]; unter = $unter })
 }
 $index = [ordered]@{

@@ -8,7 +8,7 @@
     "maerkte": ["billa", "penny", "hofer", "lidl", "tchibo", "spar"],
     "teile": { "spar": 32 },
     "_auslassen": "Shop-Kategorien (Regex), die gar nicht abgerufen werden - spart Zeit. Billa: Hauptkategorie (Slug/Name), Spar: Kategoriepfad. Hofer, Lidl und Penny liefern alles auf einmal, dort greift nur 'weglassen' bei der Kategorie.",
-    "auslassen": "(?i)^haustier|tierbedarf|tierfutter|heimtier",
+    "auslassen": "(?i)^haustier|tierbedarf|tierfutter|heimtier|^Haushalt / Spielen, Lernen, Büro & Unterhaltung / (Spielware|Papier)|^Haushalt / (Textilien|Gutscheinwelt)|Heimtextilien / (Bettwäsche|Bettware)",
     "_nur_lokal": "Maerkte, die NICHT auf GitHub abgerufen werden (Spar sperrt GitHub-Server mit HTTP 403). Sie kommen ueber einen anderen Weg in die Historie; der GitHub-Lauf uebernimmt ihren letzten Stand aus der Historie.",
     "nur_lokal": ["spar"]
   },
@@ -333,7 +333,7 @@
           "alle": [{ "pfadre": "farben & zubehör|farben & zubehoer|sanitär- & kleinmöbel" }],
           "lidl": [{ "pfad": "Bauen & Renovieren" }],
           "hofer": [] },
-        { "id": "bekleidung", "name": "Arbeitsbekleidung",
+        { "id": "bekleidung", "name": "Arbeitsbekleidung", "weglassen": true,
           "lidl": [{ "pfad": "Arbeitsbekleidung" }],
           "hofer": [{ "pfad": "Marke:WORKZONE" }] },
         { "id": "werkzeug-sonst", "name": "Sonstiges (Baumarkt & Parkside)",
@@ -392,8 +392,8 @@
       "id": "nonfood", "name": "Spielzeug, Mode & Non-Food", "pos": 170,
       "_hinweis": "Steht vor Haushalt: Spar fuehrt Spielwaren, Buero, Textilien und Freizeit unter 'Haushalt'.",
       "unter": [
-        { "id": "spielzeug", "name": "Spielzeug, Spiele & Büro", "alle": [{ "pfadre": "spielzeug|spielware|spiele|spielen|lernen|unterhaltung|basteln|handarbeit|malen|schreibwaren|bürobedarf|buerobedarf" }] },
-        { "id": "mode", "name": "Mode, Schuhe & Textilien", "alle": [{ "pfadre": "^textilien$|^mode|mode &|herrenmode|damenmode|kindermode|bekleidung|^schuhe$|socken|strümpfe|struempfe" }] },
+        { "id": "spielzeug", "name": "Spielzeug, Spiele & Büro", "weglassen": true, "alle": [{ "pfadre": "spielzeug|spielware|spiele|spielen|lernen|unterhaltung|basteln|handarbeit|malen|schreibwaren|bürobedarf|buerobedarf" }] },
+        { "id": "mode", "name": "Mode, Schuhe & Textilien", "weglassen": true, "alle": [{ "pfadre": "^textilien$|^mode|mode &|herrenmode|damenmode|kindermode|bekleidung|^schuhe$|socken|strümpfe|struempfe" }] },
         { "id": "technik", "name": "Elektronik & Technik", "alle": [{ "pfadre": "elektronik|multimedia|computer|handy|unterhaltungselektronik" }] },
         { "id": "wohnen", "name": "Wohnen, Deko & Beleuchtung", "alle": [{ "pfadre": "^wohnen|wohnen &|einrichtung|dekoration|möbel|moebel" }] },
         { "id": "freizeit", "name": "Sport, Freizeit & Reise", "alle": [{ "pfadre": "sport & freizeit|freizeit|reise|camping|outdoor|sportartikel" }] },
@@ -418,7 +418,7 @@
         { "id": "naehen", "name": "Nähen", "alle": [{ "pfadre": "nähen|naehen|nähzubehör|nähmaschine" }] },
         { "id": "garten", "name": "Garten, Pflanzen & Blumen", "alle": [{ "pfadre": "garten|pflanze|blume" }] },
         { "id": "kueche", "name": "Küche, Kochen & Tisch", "alle": [{ "pfadre": "küche|kueche|kochgeschirr|kochen|backutensil|backformen|tischkultur|bestecke|glaswaren|porzellan|einkochen|trinkflaschen|isolierflaschen|haushaltswaren|haushaltsartikel|gedeckter tisch|geschirr|messer" }] },
-        { "id": "haushalt-sonst", "name": "Sonstiger Haushalt", "alle": [{ "pfadre": "haushalt|büro|buero" }] }
+        { "id": "haushalt-sonst", "name": "Sonstiger Haushalt", "weglassen": true, "alle": [{ "pfadre": "haushalt|büro|buero" }] }
       ]
     },
     {
@@ -534,7 +534,7 @@
 
   "ausschluss": {
     "_hinweis": "Stichworte (Teil des Namens, Gross-/Kleinschreibung egal) und Kategorie-Namen, die nie gespeichert werden.",
-    "stichworte": ["vegan", "veggie", "vegetarisch", "planted", "fleischersatz", "pflanzlich", "geschenk", "gutschein", "glas set", "gläser"],
+    "stichworte": ["vegan", "veggie", "vegetarisch", "planted", "fleischersatz", "pflanzlich", "geschenk", "gutschein", "glas set", "gläser", "bettwäsche", "bettwaesche", "spannleintuch", "spannbetttuch", "bettbezug"],
     "kategorien": ["Mehrweg", "Eiswürfel"]
   },
 
