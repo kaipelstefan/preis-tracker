@@ -38,6 +38,10 @@ $Heute       = [DateTime]::UtcNow.AddHours(1).ToString('yyyy-MM-dd')   # Wiener 
 function Lies-Json([string]$Pfad) { [IO.File]::ReadAllText($Pfad, $Utf8) | ConvertFrom-Json }
 
 function Hole-Json([string]$Url, [hashtable]$Kopf = @{}, [int]$PauseMs = 250) {
+    if ($SparVermittler -and $Url.StartsWith('https://api-scp.spar-ics.com/')) {
+        $Url = $SparVermittler + '?url=' + [uri]::EscapeDataString($Url)
+        $Kopf = $SparKopf
+    }
     for ($versuch = 1; ; $versuch++) {
         try {
             $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -UserAgent $UA -Headers $Kopf -TimeoutSec 60
@@ -80,6 +84,16 @@ function Menge([double]$Zahl, [string]$Einheit) {
 $Konfig = Lies-Json $KonfigDatei
 # Regex fuer Shop-Kategorien, die gar nicht abgerufen werden (Billa: Hauptkategorie, Spar: Kategoriepfad)
 $Auslassen = if ($Konfig.abruf -and $Konfig.abruf.auslassen) { [string]$Konfig.abruf.auslassen } else { '' }
+# Spar sperrt GitHub: dort laufen Spar-Anfragen ueber den Webspace (site/api/spar.php).
+# Umgebung: PT_SPAR_VERMITTLER (Adresse von spar.php), PT_SEITE (benutzer:passwort der Seite), PT_TOKEN.
+$SparVermittler = ''
+if ($env:PT_SPAR_VERMITTLER -and $env:PT_SEITE -and $env:PT_TOKEN) {
+    $SparVermittler = $env:PT_SPAR_VERMITTLER.Trim()
+    $SparKopf = @{ Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($env:PT_SEITE.Trim())); 'X-PT-Token' = $env:PT_TOKEN.Trim() }
+    Write-Host "Spar ueber den Webspace: $SparVermittler"
+}
+# Nur die Spar-Angebote abrufen (Filter "Im Angebot") statt des ganzen Sortiments
+$SparNurAngebote = [bool]($Konfig.abruf -and $Konfig.abruf.spar_nur_angebote)
 $AusStichworte = @($Konfig.ausschluss.stichworte | ForEach-Object { [regex]::Escape($_.ToLower()) })
 $AusRegex      = if ($AusStichworte.Count) { [regex]('(' + ($AusStichworte -join '|') + ')') } else { $null }
 $AusKategorien = @{}; foreach ($k in $Konfig.ausschluss.kategorien) { $AusKategorien[$k.ToLower()] = $true }
@@ -485,7 +499,7 @@ function Hole-Alles([string]$Markt) {
                 try {
                     $seiten = 1
                     for ($seite = 1; $seite -le $seiten -and $seite -le 400; $seite++) {
-                        $url = "https://api-scp.spar-ics.com/ecom/pw/v1/search/v1/navigation?query=*&sort=Relevancy:asc&page=$seite&hitsPerPage=32&marketId=8999&showPermutedSearchParams=false&filter=pwCategoryIds%3A$($bl.id)"
+                        $url = "https://api-scp.spar-ics.com/ecom/pw/v1/search/v1/navigation?query=*&sort=Relevancy:asc&page=$seite&hitsPerPage=32&marketId=8999&showPermutedSearchParams=false&filter=pwCategoryIds%3A$($bl.id)" + $(if ($SparNurAngebote) { '&filter=inAngebot%3Atrue' } else { '' })
                         $d = Hole-Json $url $kopf 2500   # Spar (Cloudflare) sperrt nach ca. 60 schnellen Anfragen
                         $seiten = [int]$d.paging.pageCount
                         foreach ($h in @($d.hits)) { $s = Spar-Satz $h; if ($s) { Fuege-Hinzu $tab $liste $s @($bl.namen) } }

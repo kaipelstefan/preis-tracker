@@ -51,6 +51,11 @@ jobs:
       - name: ${{ matrix.markt }} abrufen
         shell: pwsh
         run: ./abrufen.ps1 -Maerkte ${{ matrix.markt }} -RohSchreiben roh
+        env:
+          # Spar sperrt GitHub: Spar-Anfragen ueber den Webspace (site/api/spar.php)
+          PT_SPAR_VERMITTLER: ${{ vars.PT_SPAR_VERMITTLER || 'https://preise.kaipel.at/api/spar.php' }}
+          PT_SEITE: ${{ secrets.PT_SEITE }}
+          PT_TOKEN: ${{ secrets.PT_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: roh-${{ matrix.markt }}
@@ -72,6 +77,11 @@ jobs:
       - name: ${{ matrix.auftrag.markt }} Teil ${{ matrix.auftrag.teil }} von ${{ matrix.auftrag.teile }}
         shell: pwsh
         run: ./abrufen.ps1 -Maerkte ${{ matrix.auftrag.markt }} -Teil ${{ matrix.auftrag.teil }} -Teile ${{ matrix.auftrag.teile }} -RohSchreiben roh
+        env:
+          # Spar sperrt GitHub: Spar-Anfragen ueber den Webspace (site/api/spar.php)
+          PT_SPAR_VERMITTLER: ${{ vars.PT_SPAR_VERMITTLER || 'https://preise.kaipel.at/api/spar.php' }}
+          PT_SEITE: ${{ secrets.PT_SEITE }}
+          PT_TOKEN: ${{ secrets.PT_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: roh-${{ matrix.auftrag.markt }}-${{ matrix.auftrag.teil }}
