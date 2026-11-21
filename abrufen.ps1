@@ -78,6 +78,8 @@ function Menge([double]$Zahl, [string]$Einheit) {
 }
 
 $Konfig = Lies-Json $KonfigDatei
+# Regex fuer Shop-Kategorien, die gar nicht abgerufen werden (Billa: Hauptkategorie, Spar: Kategoriepfad)
+$Auslassen = if ($Konfig.abruf -and $Konfig.abruf.auslassen) { [string]$Konfig.abruf.auslassen } else { '' }
 $AusStichworte = @($Konfig.ausschluss.stichworte | ForEach-Object { [regex]::Escape($_.ToLower()) })
 $AusRegex      = if ($AusStichworte.Count) { [regex]('(' + ($AusStichworte -join '|') + ')') } else { $null }
 $AusKategorien = @{}; foreach ($k in $Konfig.ausschluss.kategorien) { $AusKategorien[$k.ToLower()] = $true }
@@ -425,6 +427,7 @@ function Hole-Alles([string]$Markt) {
             $baum = Hole-Json 'https://shop.billa.at/api/product-discovery/categories/tree'
             foreach ($k in @($baum)) {
                 if ($k.slug -match '^(neu-im-online-shop|treuepromotion|frisch-gekocht)') { continue }
+                if ($Auslassen -and ($k.slug -match $Auslassen -or $k.name -match $Auslassen)) { Write-Host "  billa $($k.name): ausgelassen"; continue }
                 try {
                     for ($seite = 0; $seite -lt 60; $seite++) {
                         $d = Hole-Json "https://shop.billa.at/api/product-discovery/categories/$($k.slug)/products?pageSize=500&page=$seite"
@@ -474,6 +477,8 @@ function Hole-Alles([string]$Markt) {
             $blaetter = Spar-Blaetter
             $nr = 0
             foreach ($bl in $blaetter) {
+                # Shop-Kategorien, die nicht mehr gebraucht werden (konfig.json abruf.auslassen), gar nicht erst abrufen
+                if ($Auslassen -and ((@($bl.namen) -join ' / ') -match $Auslassen)) { continue }
                 $nr++
                 # Aufgeteilter Abruf: nur jede Teile-te Kategorie ab Teil
                 if ($Teil -ge 0 -and (($nr - 1) % $Teile) -ne $Teil) { continue }

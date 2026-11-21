@@ -7,6 +7,8 @@
     "_hinweis": "Steuert den Abruf und die parallelen GitHub-Jobs: jeder Markt bekommt einen eigenen Job, Maerkte unter 'teile' werden auf so viele parallele Jobs verteilt. Neuer Shop: Abruf-Modul in abrufen.ps1 (Hole-Alles) + hier eintragen.",
     "maerkte": ["billa", "penny", "hofer", "lidl", "tchibo", "spar"],
     "teile": { "spar": 32 },
+    "_auslassen": "Shop-Kategorien (Regex), die gar nicht abgerufen werden - spart Zeit. Billa: Hauptkategorie (Slug/Name), Spar: Kategoriepfad. Hofer, Lidl und Penny liefern alles auf einmal, dort greift nur 'weglassen' bei der Kategorie.",
+    "auslassen": "(?i)^haustier|tierbedarf|tierfutter|heimtier",
     "_nur_lokal": "Maerkte, die NICHT auf GitHub abgerufen werden (Spar sperrt GitHub-Server mit HTTP 403). Sie kommen ueber einen anderen Weg in die Historie; der GitHub-Lauf uebernimmt ihren letzten Stand aus der Historie.",
     "nur_lokal": ["spar"]
   },
