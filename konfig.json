@@ -10,7 +10,7 @@
     "_spar": "Spar sperrt GitHub-Server; Spar-Anfragen laufen deshalb ueber den Webspace (site/api/spar.php, GitHub-Secrets PT_SEITE + PT_TOKEN). Wenige Teile, weil alle ueber dieselbe Webspace-Adresse gehen (Spar drosselt bei zu vielen Anfragen).",
     "spar_nur_angebote": true,
     "_auslassen": "Shop-Kategorien (Regex), die gar nicht abgerufen werden - spart Zeit. Billa: Hauptkategorie (Slug/Name), Spar: Kategoriepfad. Hofer, Lidl und Penny liefern alles auf einmal, dort greift nur 'weglassen' bei der Kategorie.",
-    "auslassen": "(?i)^haustier|tierbedarf|tierfutter|heimtier|^Haushalt / Spielen, Lernen, Büro & Unterhaltung / (Spielware|Papier)|^Haushalt / (Textilien|Gutscheinwelt)|Heimtextilien / (Bettwäsche|Bettware)",
+    "auslassen": "(?i)^haustier|tierbedarf|tierfutter|heimtier|^Haushalt / (Spielen, Lernen, Büro & Unterhaltung|Textilien|Gutscheinwelt)|^Haushalt / Freizeit & Saisonen / (Camping|Sport|Plantschen|Reisegepäck|Partyzubehör)|Heimtextilien / (Bettwäsche|Bettware)",
     "_nur_lokal": "Maerkte, die NICHT auf GitHub abgerufen werden. Sie kommen ueber einen anderen Weg in die Historie; der GitHub-Lauf uebernimmt ihren letzten Stand aus der Historie.",
     "nur_lokal": []
   },
@@ -391,7 +391,7 @@
       ]
     },
     {
-      "id": "nonfood", "name": "Spielzeug, Mode & Non-Food", "pos": 170,
+      "id": "nonfood", "name": "Spielzeug, Mode & Non-Food", "pos": 170, "weglassen": true,
       "_hinweis": "Steht vor Haushalt: Spar fuehrt Spielwaren, Buero, Textilien und Freizeit unter 'Haushalt'.",
       "unter": [
         { "id": "spielzeug", "name": "Spielzeug, Spiele & Büro", "weglassen": true, "alle": [{ "pfadre": "spielzeug|spielware|spiele|spielen|lernen|unterhaltung|basteln|handarbeit|malen|schreibwaren|bürobedarf|buerobedarf" }] },
