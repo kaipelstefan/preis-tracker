@@ -102,6 +102,14 @@ main { min-width: 0; padding: 8px 0 40px; }
 .marke .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .marke .zahl { color: var(--leise); font-size: 12px; font-variant-numeric: tabular-nums; }
 .marke.leer { opacity: .5; }
+.kat-zeile { font-size: 13px; color: var(--leise); margin: 6px 0 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.kat-zeile b { color: var(--text); font-weight: 600; }
+.kat-aendern { background: var(--bg); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+.ka-zeile { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.ka-zeile select { flex: 1 1 160px; min-width: 0; border: 1px solid var(--linie); background: var(--fl); border-radius: 8px; padding: 7px 8px; font-size: 14px; }
+.ka-zeile button { border: 1px solid var(--linie); background: var(--fl); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 14px; }
+.ka-zeile .ka-haupt { background: var(--akzent); border-color: var(--akzent); color: #fff; font-weight: 600; }
+.ka-hinweis { font-size: 12px; color: var(--leise); margin: 0; }
 .regal { background: var(--bg); border-radius: 10px; padding: 10px 12px; margin: 12px 0; }
 .regal label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; }
 .regal-zeile { display: flex; gap: 8px; align-items: center; color: var(--leise); font-size: 13px; }
@@ -331,7 +339,17 @@ function pruefeStand(beiNeu) {
   document.head.appendChild(s);
 }
 
-lade('index').then(start, function () {
+// Haendische Kategorie-Korrekturen (Server) vor dem Start holen; ohne Server oder bei Fehler ohne Korrekturen weiter
+var KORR = {};   // id -> {k, uk, von}
+function ladeKorrekturen() {
+  if (location.protocol === 'file:') return Promise.resolve();
+  var holen = fetch('api/zuordnung.php', { credentials: 'same-origin', cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : {}; })
+    .then(function (j) { KORR = (j && j.zuordnung) || {}; }, function () {});
+  return Promise.race([holen, new Promise(function (ok) { setTimeout(ok, 4000); })]);
+}
+
+lade('index').then(function (D) { return ladeKorrekturen().then(function () { start(D); }); }, function () {
   var ohne = location.protocol === 'file:'
     ? 'Keine Daten gefunden. Bitte zuerst <code>abrufen.ps1</code> ausführen.'
     : 'Noch keine Preisdaten vorhanden – der Abruf läuft. Die Seite lädt sie automatisch, sobald sie da sind.';
@@ -486,14 +504,29 @@ var KATDATEN = {};             // kat-id -> Liste (voll)
 var LAEDT = {};                // kat-id -> wird gerade geladen
 var SUCHE = null;              // kompakter Index aller Artikel
 var SUCHE_ID = {};             // id -> Indexzeile
-function merkeVoll(liste) { return liste.map(function (a) { var r = POOL[a.id]; if (!r) { r = auswerten(a); POOL[a.id] = r; } return r; }); }
+// Korrektur anwenden: a._von = Kategorie-Datei, in der der Artikel liegt
+function korrigiere(a) { var u = KORR[a.id]; if (u && !a._korr) { a._von = a.k; a.k = u.k; a.uk = u.uk; a._korr = true; } return a; }
+function merkeVoll(liste) { return liste.map(function (a) { var r = POOL[a.id]; if (!r) { r = auswerten(korrigiere(a)); POOL[a.id] = r; } return r; }); }
+var DATEI = {};   // kat-id -> Promise der Artikel dieser Datei
+function ladeDatei(k) { return DATEI[k] || (DATEI[k] = lade('kat-' + k).then(merkeVoll, function () { return []; })); }
 function ladeKat(k) {
   if (KATDATEN[k]) return Promise.resolve(KATDATEN[k]);
-  return lade('kat-' + k).then(function (l) { KATDATEN[k] = merkeVoll(l); return KATDATEN[k]; });
+  // haendisch hierher verschobene Artikel liegen (bis zum naechsten Abruf) noch in der Datei ihrer alten Kategorie
+  var quellen = [k];
+  Object.keys(KORR).forEach(function (id) { var u = KORR[id]; if (u.k === k && u.von && quellen.indexOf(u.von) < 0) quellen.push(u.von); });
+  return Promise.all(quellen.map(ladeDatei)).then(function (ll) {
+    var da = {}, l = [];
+    ll.forEach(function (x) { x.forEach(function (r) { if (r.a.k === k && !da[r.a.id]) { da[r.a.id] = 1; l.push(r); } }); });
+    KATDATEN[k] = l; return l;
+  });
 }
 function ladeSuche() {
   if (SUCHE) return Promise.resolve(SUCHE);
-  return lade('suche').then(function (l) { SUCHE = l; l.forEach(function (z) { SUCHE_ID[z[0]] = z; }); bildeGruppen(l); return l; });
+  return lade('suche').then(function (l) {
+    SUCHE = l;
+    l.forEach(function (z) { SUCHE_ID[z[0]] = z; var u = KORR[z[0]]; if (u) { z[3] = u.k; z[4] = u.uk; } });
+    bildeGruppen(l); return l;
+  });
 }
 
 // ------------------------------------------------------------------ Gleiche Artikel in verschiedenen Maerkten
@@ -851,6 +884,41 @@ function vglBadge(id) {
   var andere = []; v.liste.forEach(function (x) { if (x.m !== v.ich.m && andere.indexOf(MARKTNAME[x.m] || x.m) < 0) andere.push(MARKTNAME[x.m] || x.m); });
   return '<span class="badge b-vgl-best" title="Gleicher Artikel in anderen Märkten">⇄ ' + (v.vorteil > 0.004 ? 'Bestpreis · bis ' + euro(v.vorteil) + ' günstiger als ' : 'gleicher Preis wie ') + esc(andere.join(', ')) + '</span>';
 }
+// ------------------------------------------------------------------ Kategorie haendisch korrigieren
+function katFormular(r) {
+  var a = r.a, f = $('ka-form');
+  if (location.protocol === 'file:') { f.hidden = false; f.innerHTML = 'Korrekturen brauchen den Server (preise.kaipel.at).'; return; }
+  function unterOptionen(k) { return (UNTER[k] || []).map(function (u) { return '<option value="' + esc(u.id) + '"' + (k === a.k && u.id === a.uk ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join(''); }
+  f.innerHTML = '<div class="ka-zeile"><select id="ka-k" aria-label="Kategorie">' + D.kategorien.map(function (k) { return '<option value="' + esc(k.id) + '"' + (k.id === a.k ? ' selected' : '') + '>' + esc(k.name) + '</option>'; }).join('') + '</select>' +
+    '<select id="ka-uk" aria-label="Unterkategorie">' + unterOptionen(a.k) + '</select></div>' +
+    '<div class="ka-zeile"><button class="ka-haupt" id="ka-speichern">Speichern</button>' + (KORR[a.id] ? '<button id="ka-auto">Wieder automatisch zuordnen</button>' : '') + '<button id="ka-abbruch">Abbrechen</button></div>' +
+    '<p class="ka-hinweis" id="ka-status">Gilt sofort und bleibt auch bei allen künftigen Abrufen so.</p>';
+  f.hidden = false;
+  $('ka-k').onchange = function () { $('ka-uk').innerHTML = unterOptionen(this.value); };
+  $('ka-abbruch').onclick = function () { f.hidden = true; };
+  function senden(daten) {
+    $('ka-status').textContent = 'Wird gespeichert …';
+    return fetch('api/zuordnung.php', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten) })
+      .then(function (x) { return x.json().then(function (j) { if (!x.ok || j.fehler) throw new Error(j.fehler || ('HTTP ' + x.status)); return j; }); });
+  }
+  $('ka-speichern').onclick = function () {
+    var k = $('ka-k').value, uk = $('ka-uk').value;
+    if (!uk) { $('ka-status').textContent = 'Bitte eine Unterkategorie wählen.'; return; }
+    var von = (KORR[a.id] && KORR[a.id].von) || a._von || a.k, alt = a.k;
+    senden({ id: a.id, k: k, uk: uk, von: von, name: a.n }).then(function () {
+      KORR[a.id] = { k: k, uk: uk, von: von };
+      a._von = von; a.k = k; a.uk = uk; a._korr = true;
+      var z = SUCHE_ID[a.id]; if (z) { z[3] = k; z[4] = uk; }
+      delete KOMP[a.id]; delete KATDATEN[alt]; delete KATDATEN[k];
+      zeichne(); oeffne(a.id);
+    }, function (e) { $('ka-status').textContent = 'Speichern fehlgeschlagen: ' + e.message; });
+  };
+  if ($('ka-auto')) $('ka-auto').onclick = function () {
+    senden({ id: a.id, loeschen: 1 }).then(function () { $('ka-status').textContent = 'Entfernt – die Seite lädt neu …'; setTimeout(function () { location.reload(); }, 600); },
+      function (e) { $('ka-status').textContent = 'Fehlgeschlagen: ' + e.message; });
+  };
+}
+
 // Preis am Regal (z. B. nach dem Scannen) gegen Verlauf und andere Maerkte pruefen
 function regalUrteil(r, text) {
   var p = parseFloat(String(text).replace(/[^\d,.]/g, '').replace(',', '.'));
@@ -1060,6 +1128,8 @@ function oeffne(id) {
   h += '<h2>' + esc(a.n) + '</h2>';
   h += '<div class="meta" style="color:var(--leise);font-size:13px;display:flex;gap:8px;flex-wrap:wrap"><span class="markt m-' + a.m + '">' + esc(MARKTNAME[a.m]) + '</span>' + markeHtml(a) + '<span>' + packung(r.q, a.e) + '</span><span>' + esc(katText(a)) + '</span><span>beobachtet seit ' + datum(tag(a.a)) + '</span></div>';
   h += zeitHtml(r, 'p');
+  h += '<div class="kat-zeile">Kategorie: <b>' + esc(KATNAME[a.k] || a.k || '–') + (UKNAME[a.k + '/' + a.uk] ? ' › ' + esc(UKNAME[a.k + '/' + a.uk]) : '') + '</b>' +
+    (KORR[a.id] ? ' <span class="badge b-neu">von dir korrigiert</span>' : '') + ' <button class="knopf-leise" id="ka-auf">✎ ändern</button></div><div id="ka-form" class="kat-aendern" hidden></div>';
   h += '<div class="kennzahlen">';
   h += '<div class="kz"><span>' + (r.inAktion ? 'Aktionspreis' : 'Preis') + '</span><b>' + euro(r.bezahlt) + '</b><span>' + euro(r.einheitspreis) + ' / ' + e + '</span></div>';
   if (r.inAktion) h += '<div class="kz"><span>„Statt“ laut Markt</span><b>' + euro(r.normal) + '</b><span>' + prozent(r.lautMarkt) + '</span></div>';
@@ -1083,6 +1153,7 @@ function oeffne(id) {
   document.body.classList.add('offen');
   if (window.PT_KAEUFE) window.PT_KAEUFE(a.id, $('kaeufe'));
   $('regal-preis').oninput = function () { $('regal-urteil').innerHTML = regalUrteil(r, this.value); };
+  $('ka-auf').onclick = function () { katFormular(r); };
   $('zu').onclick = schliesse;
   $('fav-detail').onclick = function () { schalteFav(a.id); this.textContent = favoriten.has(a.id) ? '★ Favorit' : '☆ Als Favorit merken'; zeichne(); };
   $('ausblenden').onclick = function () {

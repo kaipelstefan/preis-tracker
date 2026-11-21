@@ -55,4 +55,5 @@ jobs:
             daten/**
             daten.js
             rechnungen/**
+            eigene/**
             api/config.beispiel.php

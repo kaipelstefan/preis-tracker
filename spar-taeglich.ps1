@@ -18,6 +18,18 @@ $protokollOrdner = Join-Path $Ordner 'protokoll'
 $log = Join-Path $protokollOrdner ("spar-{0:yyyy-MM-dd}.log" -f (Get-Date))
 function Notiz([string]$t) { $z = "{0:HH:mm:ss} {1}" -f (Get-Date), $t; Write-Host $z; Add-Content -Path $log -Value $z -Encoding UTF8 }
 function Git([string[]]$a) { $o = & git @a 2>&1; if ($LASTEXITCODE -ne 0) { throw "git $($a -join ' ') fehlgeschlagen: $o" }; return $o }
+# Kategorie-Korrekturen von der Seite holen (api/zuordnung.php, Zugang aus rechnungen/zugang.json)
+function Hole-Korrekturen {
+    try {
+        $z = Get-Content -Raw -Encoding UTF8 (Join-Path $Ordner 'rechnungen/zugang.json') | ConvertFrom-Json
+        $auth = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$($z.benutzer):$($z.passwort)"))
+        $r = Invoke-WebRequest -UseBasicParsing -Uri (([string]$z.basis).TrimEnd('/') + '/api/zuordnung.php') -Headers @{ Authorization = "Basic $auth" } -TimeoutSec 60
+        $j = [Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray()) | ConvertFrom-Json
+        $daten = @{}; foreach ($e in $j.zuordnung.PSObject.Properties) { $daten[$e.Name] = [ordered]@{ k = $e.Value.k; uk = $e.Value.uk } }
+        [IO.File]::WriteAllText((Join-Path $Ordner 'daten/zuordnung.json'), ((ConvertTo-Json -InputObject $daten -Depth 4) + "`n"), (New-Object Text.UTF8Encoding $false))
+        Notiz ("Kategorie-Korrekturen geholt: {0}" -f $daten.Count)
+    } catch { Notiz "Kategorie-Korrekturen nicht geholt (Stand aus dem Repo gilt): $($_.Exception.Message)" }
+}
 
 try {
     Notiz 'Start Spar-Abruf'
@@ -32,14 +44,15 @@ try {
     Notiz ("Spar abgerufen: {0:N1} MB Rohdaten" -f ((Get-Item $datei).Length / 1MB))
 
     # 2. Neuesten Stand holen (lokale, erzeugte Historie verwerfen - massgeblich ist GitHub)
-    Git @('checkout', '--', 'daten/historie.json', 'daten/spar-kategorien.json') | Out-Null
+    Git @('checkout', '--', 'daten/historie.json', 'daten/spar-kategorien.json', 'daten/zuordnung.json') | Out-Null
     Git @('pull', '--ff-only', '-q') | Out-Null
     Notiz 'Neuester Stand von GitHub geholt'
+    Hole-Korrekturen
 
     # 3. Spar einspielen, committen, pushen
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Ordner 'abrufen.ps1') -Maerkte spar -RohLesen $roh *>> $log
     if ($LASTEXITCODE -ne 0) { throw "Einspielen fehlgeschlagen (Exitcode $LASTEXITCODE)" }
-    Git @('add', 'daten/historie.json', 'daten/spar-kategorien.json') | Out-Null
+    Git @('add', 'daten/historie.json', 'daten/spar-kategorien.json', 'daten/zuordnung.json') | Out-Null
     & git diff --cached --quiet
     if ($LASTEXITCODE -ne 0) {
         Git @('commit', '-q', '-m', 'Spar-Preise aktualisiert (Abruf vom PC)') | Out-Null
@@ -49,10 +62,11 @@ try {
             Notiz 'Push abgelehnt - hole neuen Stand und spiele Spar erneut ein'
             # nur den eigenen Spar-Commit zuruecknehmen; andere Dateien im Ordner bleiben unberuehrt
             Git @('reset', '-q', 'HEAD~1') | Out-Null
-            Git @('checkout', '--', 'daten/historie.json', 'daten/spar-kategorien.json') | Out-Null
+            Git @('checkout', '--', 'daten/historie.json', 'daten/spar-kategorien.json', 'daten/zuordnung.json') | Out-Null
             Git @('pull', '--ff-only', '-q') | Out-Null
+            Hole-Korrekturen
             & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Ordner 'abrufen.ps1') -Maerkte spar -RohLesen $roh *>> $log
-            Git @('add', 'daten/historie.json', 'daten/spar-kategorien.json') | Out-Null
+            Git @('add', 'daten/historie.json', 'daten/spar-kategorien.json', 'daten/zuordnung.json') | Out-Null
             Git @('commit', '-q', '-m', 'Spar-Preise aktualisiert (Abruf vom PC)') | Out-Null
             Git @('push', '-q') | Out-Null
         }

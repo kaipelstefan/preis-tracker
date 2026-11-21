@@ -545,6 +545,9 @@ function Ordne-Zu([string]$Markt) {
                         # "und": zusaetzliche Bedingung an den Kategoriepfad (z. B. nur unter "Tiefkuehl")
                         $undRe = if ($regel -isnot [string] -and $regel.und) { [string]$regel.und } elseif ($uk.und) { [string]$uk.und } elseif ($kat.und) { [string]$kat.und } else { $null }
                         if ($undRe) { $ok = $false; foreach ($nm in $x.namen) { if ([regex]::IsMatch($nm, $undRe, 'IgnoreCase')) { $ok = $true; break } }; if (-not $ok) { continue } }
+                        # "ohnepfad": Kategorie greift nicht, wenn der Artikel im Shop AUCH unter so einem Pfad steht
+                        # (z. B. Kirschtomaten, die Billa zusaetzlich unter Haushalt/Garten fuehrt)
+                        if ($kat.ohnepfad) { $raus = $false; foreach ($nm in $x.namen) { if ([regex]::IsMatch($nm, [string]$kat.ohnepfad, 'IgnoreCase')) { $raus = $true; break } }; if ($raus) { continue } }
                         $vergeben[$s.key] = $true
                         if (Ist-Ausgeschlossen $s $x.namen) { continue }
                         $s.k = $kat.id; $s.uk = $uk.id
@@ -633,6 +636,22 @@ if ($RohLesen) {
 # Kategorien mit "weglassen": true werden zwar zugeordnet (damit die Artikel nicht unter Sonstiges landen), aber nicht gespeichert
 $Weglassen = @{}
 foreach ($kat in @($Konfig.kategorien)) { if ($kat.weglassen) { $Weglassen[[string]$kat.id] = $true } }
+
+# Haendische Kategorie-Korrekturen von der Seite (Artikel-Detail "Kategorie aendern").
+# Quelle: daten/zuordnung.json (holt der Abruf vorher vom Webspace, liegt auch im Repo). Gehen vor allen Regeln.
+$Korrektur = @{}
+$KorrDatei = Join-Path (Join-Path $Ordner 'daten') 'zuordnung.json'
+if (Test-Path $KorrDatei) {
+    try {
+        $kj = Lies-Json $KorrDatei
+        $gueltig = @{}; foreach ($kat in @($Konfig.kategorien)) { $gueltig[[string]$kat.id] = @($kat.unter | ForEach-Object { [string]$_.id }) }
+        foreach ($eig in $kj.PSObject.Properties) {
+            $kk = [string]$eig.Value.k; $uu = [string]$eig.Value.uk
+            if ($gueltig.ContainsKey($kk) -and ($gueltig[$kk] -contains $uu)) { $Korrektur[$eig.Name] = @($kk, $uu) }
+        }
+        Write-Host ("Kategorie-Korrekturen: {0}" -f $Korrektur.Count)
+    } catch { Write-Warning "zuordnung.json nicht lesbar: $($_.Exception.Message)" }
+}
 $neu = @{}
 $fehler = @()
 foreach ($markt in $Maerkte) {
@@ -640,7 +659,11 @@ foreach ($markt in $Maerkte) {
     try {
         $saetze = Ordne-Zu $markt
         $script:Roh.Remove($markt)   # Rohdaten freigeben (Speicher)
-        foreach ($s in $saetze) { if ($s.k -and $Weglassen.ContainsKey([string]$s.k)) { continue }; if (-not $neu.ContainsKey($s.key)) { $neu[$s.key] = $s } }
+        foreach ($s in $saetze) {
+            if ($Korrektur.ContainsKey($s.key)) { $s.k = $Korrektur[$s.key][0]; $s.uk = $Korrektur[$s.key][1] }
+            if ($s.k -and $Weglassen.ContainsKey([string]$s.k)) { continue }
+            if (-not $neu.ContainsKey($s.key)) { $neu[$s.key] = $s }
+        }
         Write-Host ("  {0}: {1} Artikel" -f $markt, @($saetze).Count)
     } catch {
         Write-Warning "$markt fehlgeschlagen: $($_.Exception.Message)"
@@ -717,6 +740,8 @@ foreach ($markt in $Maerkte) {
 $entfernt = 0
 foreach ($key in @($hist.Keys)) {
     $e = $hist[$key]
+    # Korrekturen auch fuer Artikel, deren Markt heute nicht abgerufen wurde (z. B. Spar vom PC)
+    if ($Korrektur.ContainsKey($key)) { $e.k = $Korrektur[$key][0]; $e.uk = $Korrektur[$key][1] }
     if ($Ausgeblendet.ContainsKey($key) -or $e.z -lt $grenze -or ($e.k -and $Weglassen.ContainsKey([string]$e.k))) { $hist.Remove($key); continue }
     # Erst heute angelegt, beim jetzigen vollstaendigen Abruf aber nicht mehr zugeordnet
     # (z. B. nach einer Regelaenderung in konfig.json): wieder entfernen

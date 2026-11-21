@@ -403,6 +403,7 @@
     {
       "id": "haushalt", "name": "Haushalt & Garten", "pos": 140,
       "und": "haushalt|garten",
+      "ohnepfad": "^(obst|gem(ü|ue)se|brot|fleisch|kühlwaren|kuehlwaren|molkerei|frischfleisch|wurst)",
       "unter": [
         { "id": "papier", "name": "Küchenrolle, WC-Papier & Servietten", "alle": [{ "pfadre": "küchenrolle|kuechenrolle|wc.?papier|toilettenpapier|taschentücher|serviette" }] },
         { "id": "reinigen", "name": "Putzen & Reinigen", "alle": [{ "pfadre": "putz|reinig|spül|spuel|geschirrsp|entkalk|besen|bürsten|schwämme|lederpflege" }] },

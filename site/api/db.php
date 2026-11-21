@@ -86,6 +86,15 @@ function schema(PDO $pdo): void {
         menge VARCHAR(100) NULL,
         geholt DATETIME NOT NULL
     ) DEFAULT CHARSET=utf8mb4");
+    // Haendische Kategorie-Korrekturen (gelten auf der Seite sofort und beim Abruf dauerhaft)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pt_zuordnung (
+        artikel_id VARCHAR(80) NOT NULL PRIMARY KEY,
+        k VARCHAR(40) NOT NULL,
+        uk VARCHAR(40) NOT NULL,
+        von VARCHAR(40) NULL,
+        name VARCHAR(255) NULL,
+        geaendert DATETIME NOT NULL
+    ) DEFAULT CHARSET=utf8mb4");
 }
 
 // Ablage der Rechnungs-Dateien (per .htaccess gesperrt, Auslieferung nur ueber datei.php)

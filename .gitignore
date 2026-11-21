@@ -7,6 +7,7 @@ upload/
 site/api/config.php
 site/.htaccess
 site/rechnungen/
+site/eigene/
 rechnungen/
 
 .claude/

@@ -93,6 +93,25 @@ jobs:
           pattern: roh-*
           path: roh
           merge-multiple: true
+      - name: Kategorie-Korrekturen vom Webspace holen
+        # Von der Seite gespeichert (api/zuordnung.php -> eigene/zuordnung.json). Klappt das nicht,
+        # gilt der Stand aus dem Repo (daten/zuordnung.json) - die Korrekturen gehen also nie verloren.
+        continue-on-error: true
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME || secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PROTOKOLL: ${{ vars.FTP_PROTOKOLL || 'ftps' }}
+          FTP_ZIELORDNER: ${{ vars.FTP_ZIELORDNER || './' }}
+        run: |
+          ssl=""; [ "$FTP_PROTOKOLL" != "ftp" ] && ssl="--ssl-reqd"
+          pfad="${FTP_ZIELORDNER#./}"
+          if curl -sS -k $ssl --max-time 60 -u "$FTP_USER:$FTP_PASSWORD" "ftp://$FTP_SERVER/${pfad}eigene/zuordnung.json" -o /tmp/zuordnung.json              && python3 -c "import json,sys; json.load(open('/tmp/zuordnung.json'))"; then
+            mv /tmp/zuordnung.json daten/zuordnung.json && echo "Korrekturen vom Webspace geholt"
+          else
+            echo "Keine Korrekturen vom Webspace - Stand aus dem Repo wird verwendet"
+          fi
+
       - name: Seite mit den schnellen Maerkten aktualisieren
         shell: pwsh
         run: ./abrufen.ps1 -Maerkte ${{ needs.planen.outputs.schnelleliste }} -RohLesen roh
@@ -124,6 +143,25 @@ jobs:
           path: roh
           merge-multiple: true
 
+      - name: Kategorie-Korrekturen vom Webspace holen
+        # Von der Seite gespeichert (api/zuordnung.php -> eigene/zuordnung.json). Klappt das nicht,
+        # gilt der Stand aus dem Repo (daten/zuordnung.json) - die Korrekturen gehen also nie verloren.
+        continue-on-error: true
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME || secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_PROTOKOLL: ${{ vars.FTP_PROTOKOLL || 'ftps' }}
+          FTP_ZIELORDNER: ${{ vars.FTP_ZIELORDNER || './' }}
+        run: |
+          ssl=""; [ "$FTP_PROTOKOLL" != "ftp" ] && ssl="--ssl-reqd"
+          pfad="${FTP_ZIELORDNER#./}"
+          if curl -sS -k $ssl --max-time 60 -u "$FTP_USER:$FTP_PASSWORD" "ftp://$FTP_SERVER/${pfad}eigene/zuordnung.json" -o /tmp/zuordnung.json              && python3 -c "import json,sys; json.load(open('/tmp/zuordnung.json'))"; then
+            mv /tmp/zuordnung.json daten/zuordnung.json && echo "Korrekturen vom Webspace geholt"
+          else
+            echo "Keine Korrekturen vom Webspace - Stand aus dem Repo wird verwendet"
+          fi
+
       - name: Zuordnen, Historie fortschreiben, Seiten-Dateien erzeugen
         shell: pwsh
         run: ./abrufen.ps1 -RohLesen roh
@@ -142,7 +180,7 @@ jobs:
 
       - name: Historie speichern
         run: |
-          git add daten/historie.json daten/spar-kategorien.json
+          git add daten/historie.json daten/spar-kategorien.json daten/zuordnung.json
           if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
