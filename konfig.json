@@ -5,7 +5,7 @@
 
   "abruf": {
     "_hinweis": "Steuert den Abruf und die parallelen GitHub-Jobs: jeder Markt bekommt einen eigenen Job, Maerkte unter 'teile' werden auf so viele parallele Jobs verteilt. Neuer Shop: Abruf-Modul in abrufen.ps1 (Hole-Alles) + hier eintragen.",
-    "maerkte": ["billa", "penny", "hofer", "lidl", "tchibo", "spar"],
+    "maerkte": ["billa", "penny", "hofer", "lidl", "tchibo", "bipa", "spar"],
     "teile": { "spar": 2 },
     "_spar": "Spar sperrt GitHub-Server; Spar-Anfragen laufen deshalb ueber den Webspace (site/api/spar.php, GitHub-Secrets PT_SEITE + PT_TOKEN). Wenige Teile, weil alle ueber dieselbe Webspace-Adresse gehen (Spar drosselt bei zu vielen Anfragen).",
     "spar_nur_angebote": true,
@@ -380,9 +380,9 @@
       "id": "drogerie", "name": "Drogerie & Kosmetik", "pos": 130,
       "und": "drogerie|kosmetik|beauty|körperpflege|koerperpflege",
       "unter": [
+        { "id": "rasur", "name": "Rasur", "alle": [{ "pfadre": "rasur|rasier" }] },
         { "id": "haare", "name": "Haarpflege & Styling", "alle": [{ "pfadre": "haar" }] },
         { "id": "zahn", "name": "Zahn- & Mundpflege", "alle": [{ "pfadre": "zahn|mund" }] },
-        { "id": "rasur", "name": "Rasur", "alle": [{ "pfadre": "rasur|rasier" }] },
         { "id": "koerper", "name": "Körperpflege, Dusche & Deo", "alle": [{ "pfadre": "körper|koerper|dusch|bad|seife|deo|hand|sonne" }] },
         { "id": "gesicht", "name": "Gesicht & Kosmetik", "alle": [{ "pfadre": "gesicht|kosmetik|make|schmink|creme|lippen|nagel|parfum|duft" }] },
         { "id": "hygiene", "name": "Hygiene & Papier", "alle": [{ "pfadre": "hygiene|papier|damen|watte|taschent|inkontinenz" }] },
@@ -407,9 +407,9 @@
       "und": "haushalt|garten",
       "ohnepfad": "^(obst|gem(ü|ue)se|brot|fleisch|kühlwaren|kuehlwaren|molkerei|frischfleisch|wurst)",
       "unter": [
-        { "id": "papier", "name": "Küchenrolle, WC-Papier & Servietten", "alle": [{ "pfadre": "küchenrolle|kuechenrolle|wc.?papier|toilettenpapier|taschentücher|serviette" }] },
+        { "id": "papier", "name": "Küchenrolle, WC-Papier & Servietten", "alle": [{ "pfadre": "küchenrolle|kuechenrolle|wc.?papier|toilettenpapier|taschentücher|taschentuecher|serviette|^haushalt-papier" }] },
         { "id": "reinigen", "name": "Putzen & Reinigen", "alle": [{ "pfadre": "putz|reinig|spül|spuel|geschirrsp|entkalk|besen|bürsten|schwämme|lederpflege" }] },
-        { "id": "waschen", "name": "Waschen & Bügeln", "alle": [{ "pfadre": "wäschewaschen|waschmittel|textilpflege|weichsp|trocknen & bügeln|bügeln|buegeln" }] },
+        { "id": "waschen", "name": "Waschen & Bügeln", "alle": [{ "pfadre": "wäschewaschen|waschmittel|textilpflege|weichsp|trocknen & bügeln|bügeln|buegeln|^haushalt-waschen|waeschepflege" }] },
         { "id": "elektro", "name": "Elektrische Haushaltsgeräte", "alle": [{ "pfadre": "elektrische haushaltsger|elektro großger|kaffeemaschinen|küchenmaschinen|mikrowelle|staubsauger|wetterstation" }] },
         { "id": "heimtextil", "name": "Heimtextilien & Bettwäsche", "alle": [{ "pfadre": "heimtextil|bettw|bettware|frottier|matratze|heimdekor" }] },
         { "id": "folien", "name": "Folien, Beutel & Aufbewahrung", "alle": [{ "pfadre": "beutel|folie|gefrier|müll|muell|aufbewahr|filter|backpapier" }] },

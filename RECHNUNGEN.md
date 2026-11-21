@@ -7,7 +7,7 @@ Rechnungen lädt Stefan auf preise.kaipel.at im Reiter **Einkäufe** hoch (Foto 
 1. **Abholen:** `powershell -ExecutionPolicy Bypass -File rechnungen.ps1 -Holen`
    Lädt alle noch nicht ausgewerteten Rechnungen nach `rechnungen\eingang\` (`<id>.jpg|pdf` plus `<id>.json`).
 2. **Lesen:** Jede Datei mit dem Read-Werkzeug ansehen (Bilder und PDFs gehen direkt). Erfassen:
-   - **Markt:** `billa`, `penny`, `hofer`, `lidl`, `spar` oder `tchibo`. Billa Plus zählt als `billa`, Interspar und Eurospar als `spar`.
+   - **Markt:** `billa`, `penny`, `hofer`, `lidl`, `spar`, `tchibo` oder `bipa`. Billa Plus zählt als `billa`, Interspar und Eurospar als `spar`.
    - **Filiale:** Adresse oder Ort, falls auf dem Bon.
    - **Datum:** `yyyy-MM-dd`.
    - **Summe:** Endbetrag, den Stefan bezahlt hat.

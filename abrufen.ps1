@@ -275,6 +275,92 @@ function Hofer-Namen($p) {
     return $n
 }
 
+# ---------------------------------------------------------------- BIPA (Drogerie, ganzes Sortiment ca. 20.000 Artikel)
+# Die Kategorieseiten enthalten die Produkte als JSON (React-Query-Zustand). Daraus nur das "hits"-Array lesen.
+# Hauptkategorien (Anfang von c_category) -> Kennung fuer die Kategorie-Regeln in konfig.json; andere werden ignoriert
+# (Saison-, Geschenk-, Tier-, Mode-, Foto-, Gutschein- und Lebensmittel-Bereiche).
+$BipaBereiche = [ordered]@{
+    'mund-zahnpflege' = 'Drogerie'; 'pflege' = 'Drogerie'; 'gesundheit' = 'Drogerie'; 'make-up' = 'Drogerie Kosmetik'
+    'haar' = 'Drogerie'; 'parfum' = 'Drogerie Kosmetik'; 'maennerwelt' = 'Drogerie'; 'love' = 'Drogerie'
+    'babykind' = 'Baby'; 'haushalt' = 'Haushalt'
+}
+function Json-Array([string]$Text, [int]$Ab) {
+    # Teilstring des JSON-Arrays ab Position $Ab ('[') bis zur passenden ']' (Zeichenketten beachten)
+    $tiefe = 0; $inStr = $false; $esc = $false
+    for ($i = $Ab; $i -lt $Text.Length; $i++) {
+        $c = $Text[$i]
+        if ($inStr) { if ($esc) { $esc = $false } elseif ($c -eq '\') { $esc = $true } elseif ($c -eq '"') { $inStr = $false }; continue }
+        if ($c -eq '"') { $inStr = $true } elseif ($c -eq '[') { $tiefe++ } elseif ($c -eq ']') { $tiefe--; if ($tiefe -eq 0) { return $Text.Substring($Ab, $i - $Ab + 1) } }
+    }
+    throw 'BIPA: Produktliste unvollstaendig'
+}
+function Hole-BipaSeite([string]$Url) {
+    for ($versuch = 1; ; $versuch++) {
+        try {
+            $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -UserAgent $UA -TimeoutSec 90
+            $html = $Utf8.GetString($r.RawContentStream.ToArray())
+            $pos = $html.IndexOf('"productSearchResult":{"hits":[')
+            if ($pos -lt 0) { throw 'BIPA: keine Produktliste in der Seite (Seitenaufbau geaendert?)' }
+            $arr = Json-Array $html ($pos + '"productSearchResult":{"hits":'.Length)
+            $ti = $html.IndexOf('"total":', $pos + $arr.Length)   # steht nach der (langen) Filterliste
+            $total = if ($ti -gt 0) { [int]([regex]::Match($html.Substring($ti, 30), '"total":(\d+)').Groups[1].Value) } else { 0 }
+            Start-Sleep -Milliseconds 700   # hoeflich bleiben
+            $treffer = ConvertFrom-Json $arr   # erst zuweisen: PS 5.1 liefert ein JSON-Array sonst als ein Objekt
+            return @{ hits = $treffer; total = $total }
+        } catch {
+            if ($versuch -ge 5) { throw "BIPA-Abruf fehlgeschlagen: $Url ($($_.Exception.Message))" }
+            Write-Host "    BIPA: $($_.Exception.Message) - neuer Versuch"
+            Start-Sleep -Seconds (5 * $versuch)
+        }
+    }
+}
+function Bipa-Satz($h) {
+    $kat = [string]$h.c_category
+    $bereich = $null
+    foreach ($b in $BipaBereiche.Keys) { if ($kat -eq $b -or $kat.StartsWith("$b-")) { $bereich = $b; break } }
+    if (-not $bereich) { return $null }
+    if (-not $h.c_displayedPrice) { return $null }
+    $preis = [double]$h.c_displayedPrice
+    $statt = 0.0; [void][double]::TryParse(([string]$h.c_insteadPrice).Replace(',', '.'), [Globalization.NumberStyles]::Float, $Inv, [ref]$statt)
+    $badges = @($h.c_effectivePriceBadges | Where-Object { $_ })
+    $normal = if ($statt -gt $preis) { $statt } else { $preis }
+    $aktion = $null; $atext = $null
+    if ($statt -gt $preis) { $aktion = $preis; $atext = $(if ($badges.Count) { $badges -join ' / ' } else { 'Aktion' }) }
+    else {
+        # Mehrkauf-Aktionen ("1+1 Gratis", "2+1 gratis"): Stueckpreis beim Kauf der ganzen Menge
+        foreach ($b in $badges) {
+            if ($b -match '(\d+)\s*\+\s*(\d+)\s*gratis') {
+                $x = [int]$Matches[1]; $y = [int]$Matches[2]
+                $aktion = [math]::Round($preis * $x / ($x + $y), 2)
+                $atext = "$b (je Stueck beim Kauf von $($x + $y))"
+                break
+            }
+        }
+    }
+    # Inhalt: "500 ml", "2 x 100 ml", "60 Stueck" -> Menge in kg / l / Stk
+    $inhalt = [string]$h.c_inhalt
+    $m = @{ q = 1.0; e = 'stk' }
+    $mm = [regex]::Match($inhalt, '(?:(\d+)\s*x\s*)?(\d+(?:[.,]\d+)?)\s*(kg|g|ml|cl|l)\b', 'IgnoreCase')
+    if ($mm.Success) {
+        $zahl = [double]::Parse($mm.Groups[2].Value.Replace(',', '.'), $Inv)
+        if ($mm.Groups[1].Success) { $zahl *= [int]$mm.Groups[1].Value }
+        $m = Menge $zahl $mm.Groups[3].Value
+    } elseif ($inhalt -match '^(\d+)\s*St') { $m = @{ q = [double]$Matches[1]; e = 'stk' } }
+    $id = [string]$h.productId
+    $slug = ([string]$h.productName).ToLower().Replace([string][char]0x00E4, 'ae').Replace([string][char]0x00F6, 'oe').Replace([string][char]0x00FC, 'ue').Replace([string][char]0x00DF, 'ss') -replace '[^a-z0-9]+', '-'
+    $bild = $null; if ($h.image -and $h.image.disBaseLink) { $bild = [string]$h.image.disBaseLink + '?sw=500&sh=500' }
+    $s = [ordered]@{
+        key = "bipa:$id"; m = 'bipa'; n = [string]$h.productName; k = $null
+        g = $inhalt; q = (Runde $m.q); e = $m.e
+        normal = $normal; aktion = $aktion; at = $atext
+        u = "https://www.bipa.at/p/$($slug.Trim('-'))/$id"
+        b = $bild; hs = $(if ($h.c_brand) { [string]$h.c_brand } else { $null })
+    }
+    $namen = @($BipaBereiche[$bereich], $kat)
+    if ($h.c_brand) { $namen += "Marke:$($h.c_brand)" }
+    return @{ s = $s; namen = $namen }
+}
+
 # ---------------------------------------------------------------- Tchibo (nur Kategorie Kaffee, ca. 500 Artikel inkl. Varianten)
 # Die Seite liefert alle Produkte im Nuxt-Datenblock ("devalue": ein grosses Array, Objekte verweisen per Index).
 function Lies-GrossesJson([string]$Text) {
@@ -466,6 +552,21 @@ function Hole-Alles([string]$Markt) {
         }
         'tchibo' {
             foreach ($x in (Hole-TchiboArtikel)) { Fuege-Hinzu $tab $liste $x.s @('Tchibo Kaffee') }
+        }
+        'bipa' {
+            # Ganzes Sortiment ueber die Wurzel-Kategorie "navigation", 100 Artikel je Seite
+            $start = 0; $gesamt = 1
+            while ($start -lt $gesamt -and $start -lt 40000) {
+                $seite = Hole-BipaSeite "https://www.bipa.at/c/navigation?sz=100&start=$start"
+                $gesamt = $seite.total
+                foreach ($h in $seite.hits) {
+                    $x = Bipa-Satz $h
+                    if ($x) { Fuege-Hinzu $tab $liste $x.s $x.namen }
+                }
+                $start += 100
+                if (($start / 100) % 25 -eq 0) { Write-Host ("  bipa {0}/{1}, bisher {2} Artikel" -f $start, $gesamt, $liste.Count) }
+            }
+            Write-Host ("  bipa gesamt: {0} von {1}" -f $liste.Count, $gesamt)
         }
         'hofer' {
             $offset = 0; $gesamt = 1
@@ -832,7 +933,7 @@ $index = [ordered]@{
     stand      = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     heute      = $Heute
     fehler     = $fehler
-    maerkte    = @([ordered]@{ id = 'billa'; name = 'Billa' }, [ordered]@{ id = 'penny'; name = 'Penny' }, [ordered]@{ id = 'hofer'; name = 'Hofer' }, [ordered]@{ id = 'lidl'; name = 'Lidl' }, [ordered]@{ id = 'spar'; name = 'Spar' }, [ordered]@{ id = 'tchibo'; name = 'Tchibo' })
+    maerkte    = @([ordered]@{ id = 'billa'; name = 'Billa' }, [ordered]@{ id = 'penny'; name = 'Penny' }, [ordered]@{ id = 'hofer'; name = 'Hofer' }, [ordered]@{ id = 'lidl'; name = 'Lidl' }, [ordered]@{ id = 'spar'; name = 'Spar' }, [ordered]@{ id = 'tchibo'; name = 'Tchibo' }, [ordered]@{ id = 'bipa'; name = 'BIPA' })
     kategorien = $katListe
     auswertung = $Konfig.auswertung
     tipps      = $tipps

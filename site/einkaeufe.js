@@ -9,7 +9,7 @@ var euroF = new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR' 
 function euro(x) { return x == null || !isFinite(x) ? '–' : euroF.format(x); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function datum(s) { if (!s) return '–'; var p = String(s).slice(0, 10).split('-'); return p[2] + '.' + p[1] + '.' + p[0].slice(2); }
-var MARKT = { billa: 'Billa', penny: 'Penny', hofer: 'Hofer', lidl: 'Lidl', spar: 'Spar', tchibo: 'Tchibo' };
+var MARKT = { billa: 'Billa', penny: 'Penny', hofer: 'Hofer', lidl: 'Lidl', spar: 'Spar', tchibo: 'Tchibo', bipa: 'BIPA' };
 function marktHtml(m) { return m ? '<span class="markt m-' + esc(m) + '">' + esc(MARKT[m] || m) + '</span>' : ''; }
 function holeJson(url, opt) {
   return fetch(API + url, Object.assign({ credentials: 'same-origin' }, opt || {})).then(function (r) {
