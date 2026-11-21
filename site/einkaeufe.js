@@ -27,6 +27,10 @@ css.textContent = [
   '.ek-upload { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }',
   '.ek-upload label.knopf { border: 1px solid var(--akzent); background: var(--akzent); color: #fff; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-weight: 600; }',
   '.ek-upload input[type=file] { display: none; }',
+  '.scan-liste.mit-bild li { grid-template-columns: 52px 1fr auto; }',
+  '.scan-liste.mit-bild .bild { width: 52px; height: 52px; grid-row: 1 / span 2; grid-column: 1; }',
+  '.scan-liste.mit-bild .nm, .scan-liste.mit-bild .mt { grid-column: 2; }',
+  '.scan-liste.mit-bild button { grid-column: 3; }',
   '.ek-upload label.knopf-zwei { background: var(--fl); color: var(--akzent); }',
   '.ek-vorschau { margin-top: 10px; }',
   '.ek-bilder { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }',
@@ -271,12 +275,16 @@ function zuordnen(posId, rechnungId) {
       }
       l.sort(function (a, b) { return abstand(a) - abstand(b) || a[1].length - b[1].length; });
       $('zo-liste').className = '';
-      $('zo-liste').innerHTML = l.length ? '<ul class="scan-liste">' + l.slice(0, 25).map(function (z) {
+      var zeige = function () { $('zo-liste').innerHTML = l.length ? '<ul class="scan-liste mit-bild">' + l.slice(0, 25).map(function (z) {
         var pr = z[6] != null ? z[6] : z[5];
-        return '<li><div class="nm">' + esc(z[1]) + '</div><div class="mt">' + marktHtml(z[2]) + '<span>' + PT.packung(z[7], z[8]) + '</span><span>' + euro(pr) + (z[6] != null ? ' (Aktion)' : '') + '</span>' + (z[0] === p.artikel_id ? '<span class="badge b-echt">aktuell</span>' : '') + '</div>' +
+        return '<li>' + PT.bild(z[0]) + '<div class="nm">' + esc(z[1]) + '</div><div class="mt">' + marktHtml(z[2]) + '<span>' + PT.packung(z[7], z[8]) + '</span><span>' + euro(pr) + (z[6] != null ? ' (Aktion)' : '') + '</span>' + (z[0] === p.artikel_id ? '<span class="badge b-echt">aktuell</span>' : '') + '</div>' +
           '<button class="scan-knopf2" data-wahl="' + esc(z[0]) + '">Zuordnen</button></li>';
       }).join('') + '</ul>' + (l.length > 25 ? '<p class="scan-status">' + (l.length - 25) + ' weitere – Suche genauer machen.</p>' : '')
-        : '<p class="scan-status">Nichts gefunden' + (alle ? '' : ' bei ' + esc(MARKT[r.markt] || r.markt) + ' – Häkchen „auch in anderen Märkten“ setzen oder anders suchen') + '.</p>';
+        : '<p class="scan-status">Nichts gefunden' + (alle ? '' : ' bei ' + esc(MARKT[r.markt] || r.markt) + ' – Häkchen „auch in anderen Märkten“ setzen oder anders suchen') + '.</p>'; };
+      zeige();
+      // Bilder stecken in den Kategorie-Dateien: fuer die angezeigten Treffer nachladen, dann neu zeichnen
+      var ids = l.slice(0, 25).map(function (z) { return z[0]; });
+      if (ids.some(function (id) { return !PT.POOL[id] || PT.POOL[id].kompakt; })) PT.ladeVoll(ids).then(function () { if ($('zo-liste')) zeige(); });
     });
   }
   function speichere(aid) {

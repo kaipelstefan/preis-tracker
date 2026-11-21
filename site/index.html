@@ -1172,6 +1172,9 @@ zeichne();
 lade('angebote').then(function (l) { ANGEBOTE = merkeVoll(l); zeichne(); return ladeSuche(); }).then(function () { zeichne(); });
 // Schnittstelle fuer Erweiterungen (Einkaeufe/Rechnungen)
 window.PT = { D: D, POOL: POOL, ladeSuche: ladeSuche, SUCHE_ID: SUCHE_ID, oeffne: oeffne, euro: euro, datum: datum, tag: tag,
+  // kleines Produktbild (volle Artikeldaten noetig) und Nachladen der Kategorie-Dateien fuer eine Liste von ids
+  bild: function (id) { var r = POOL[id]; return r && !r.kompakt ? bildHtml(r.a, 'bild', 'klein') : '<div class="bild bild-leer" aria-hidden="true">🛒</div>'; },
+  ladeVoll: function (ids) { var ks = {}; ids.forEach(function (id) { var z = SUCHE_ID[id]; if (z && z[3] && !KATDATEN[z[3]]) ks[z[3]] = 1; }); return Promise.all(Object.keys(ks).map(function (k) { return ladeKat(k).catch(function () {}); })); },
   esc: esc, packung: packung, MARKTNAME: MARKTNAME, mk: mk, vglWoerter: vglWoerter, gruppe: function (id) { return GRUPPE[id]; }, vergleich: vergleich,
   schliesse: schliesse, zeigeBlatt: function (html) { if (window.PT_SCAN_STOPP) window.PT_SCAN_STOPP(); $('blatt').innerHTML = html; document.body.classList.add('offen'); } };
 
