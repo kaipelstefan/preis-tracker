@@ -133,7 +133,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      # neuester Stand des Branches (nicht der beim Start des Laufs): ein anderer Lauf oder der Spar-Abruf
+      # vom PC kann die Historie inzwischen gespeichert haben
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Rohdaten aller Jobs holen
         uses: actions/download-artifact@v4
@@ -179,12 +183,25 @@ jobs:
           log-level: minimal
 
       - name: Historie speichern
+        # Hat inzwischen jemand anderes gespeichert (Konflikt in historie.json), wird auf dessen Stand
+        # neu zusammengefuehrt und nochmals versucht - statt abzubrechen.
         run: |
-          git add daten/historie.json daten/spar-kategorien.json daten/zuordnung.json
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          dateien="daten/historie.json daten/spar-kategorien.json daten/zuordnung.json"
+          for versuch in 1 2 3; do
+            git add $dateien
+            if git diff --cached --quiet; then echo "Keine Aenderung"; exit 0; fi
             git commit -q -m "Preis-Historie aktualisiert"
-            git pull --rebase -q
-            git push -q
-          fi
+            if git pull --rebase -q && git push -q; then echo "Gespeichert (Versuch $versuch)"; exit 0; fi
+            echo "Konflikt beim Speichern - fuehre auf dem neuesten Stand neu zusammen (Versuch $versuch)"
+            git rebase --abort 2>/dev/null || true
+            cp daten/zuordnung.json /tmp/zuordnung.json
+            # nur den eigenen, noch nicht gepushten Commit zuruecknehmen und den neuesten Stand holen
+            git reset -q HEAD~1
+            git checkout -- $dateien
+            git pull -q --ff-only
+            cp /tmp/zuordnung.json daten/zuordnung.json
+            pwsh -NoProfile -Command "./abrufen.ps1 -RohLesen roh"
+          done
+          echo "Historie konnte nicht gespeichert werden"; exit 1
