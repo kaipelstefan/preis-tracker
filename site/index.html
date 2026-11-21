@@ -102,6 +102,14 @@ main { min-width: 0; padding: 8px 0 40px; }
 .marke .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .marke .zahl { color: var(--leise); font-size: 12px; font-variant-numeric: tabular-nums; }
 .marke.leer { opacity: .5; }
+.regal { background: var(--bg); border-radius: 10px; padding: 10px 12px; margin: 12px 0; }
+.regal label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 6px; }
+.regal-zeile { display: flex; gap: 8px; align-items: center; color: var(--leise); font-size: 13px; }
+.regal-zeile input { width: 110px; border: 1px solid var(--linie); background: var(--fl); border-radius: 8px; padding: 8px 10px; font-size: 16px; }
+.regal-urteil { margin-top: 8px; font-size: 13px; }
+.regal-urteil .badge { display: inline-block; font-size: 13px; padding: 4px 8px; }
+.regal-urteil ul { margin: 6px 0 0; padding-left: 18px; color: var(--leise); }
+.regal-urteil small { color: var(--leise); }
 .b-vgl-best { background: var(--gut-bg); color: var(--gut); }
 .b-vgl-teurer { background: var(--mittel-bg); color: var(--mittel); }
 table.vgl tr[data-vgl] { cursor: pointer; }
@@ -843,6 +851,35 @@ function vglBadge(id) {
   var andere = []; v.liste.forEach(function (x) { if (x.m !== v.ich.m && andere.indexOf(MARKTNAME[x.m] || x.m) < 0) andere.push(MARKTNAME[x.m] || x.m); });
   return '<span class="badge b-vgl-best" title="Gleicher Artikel in anderen Märkten">⇄ ' + (v.vorteil > 0.004 ? 'Bestpreis · bis ' + euro(v.vorteil) + ' günstiger als ' : 'gleicher Preis wie ') + esc(andere.join(', ')) + '</span>';
 }
+// Preis am Regal (z. B. nach dem Scannen) gegen Verlauf und andere Maerkte pruefen
+function regalUrteil(r, text) {
+  var p = parseFloat(String(text).replace(/[^\d,.]/g, '').replace(',', '.'));
+  if (!(p > 0)) return '';
+  var ep = p / r.q, e = einheit(r.a.e), punkte = [];
+  var minE = Math.min.apply(null, r.tage.map(function (d) { return d.bezahltE; }));
+  var urteil, klasse;
+  if (r.genugDaten && r.median) {
+    var d = 100 * (ep / r.median - 1);
+    if (ep <= minE * 1.005) { urteil = 'Sehr guter Preis – so günstig war er in der Aufzeichnung noch nie (oder gleich günstig).'; klasse = 'echt'; }
+    else if (d <= -CFG.echt) { urteil = 'Guter Preis – ' + prozent(d) + ' unter dem üblichen Preis.'; klasse = 'echt'; }
+    else if (d <= 3) { urteil = 'Normaler Preis (' + prozent(d) + ' ggü. dem üblichen Preis).'; klasse = 'maessig'; }
+    else { urteil = 'Teuer – ' + prozent(d) + ' über dem üblichen Preis.'; klasse = 'lockvogel'; }
+    punkte.push('Üblich (Median ' + CFG.tageMedian + ' Tage): ' + euro(r.median * r.q) + ', günstigster bisher: ' + euro(minE * r.q));
+  } else {
+    var d2 = 100 * (p / r.bezahlt - 1);
+    urteil = Math.abs(d2) < 1 ? 'Gleich wie der Online-Preis.' : (d2 < 0 ? prozent(d2) + ' unter dem Online-Preis.' : prozent(d2) + ' über dem Online-Preis.');
+    klasse = d2 <= 0 ? 'echt' : 'maessig';
+    punkte.push('Noch zu wenig Verlauf für eine echte Bewertung (Online-Preis ' + euro(r.bezahlt) + ').');
+  }
+  var v = SUCHE ? vergleich(r.a.id) : null;
+  if (v) {
+    var b = v.liste.filter(function (x) { return x.m !== r.a.m; })[0];
+    if (b && b.p < p - 0.004) punkte.push('Bei ' + (MARKTNAME[b.m] || b.m) + ' gerade ' + euro(b.p) + ' (' + euro(p - b.p) + ' billiger).');
+    else if (b) punkte.push('Günstiger als in den anderen Märkten (' + (MARKTNAME[b.m] || b.m) + ': ' + euro(b.p) + ').');
+  }
+  return '<span class="badge b-' + klasse + '">' + esc(urteil) + '</span><ul>' + punkte.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' +
+    (r.q !== 1 || r.a.e !== 'stk' ? '<small>' + euro(ep) + ' / ' + e + '</small>' : '');
+}
 function vglDetail(id) {
   var v = SUCHE ? vergleich(id) : null; if (!v) return '';
   var h = '<h3 style="font-size:14px;margin:14px 0 4px">⇄ Preisvergleich – gleicher Artikel</h3><table class="punkte vgl">';
@@ -1030,6 +1067,7 @@ function oeffne(id) {
   h += '</div>';
   if (r.inAktion) h += '<div><span class="badge b-' + r.bewertung + '">' + BEWERTUNG_TEXT[r.bewertung] + '</span>' + (r.letzt.text ? ' <span style="color:var(--leise);font-size:13px">' + esc(r.letzt.text) + '</span>' : '') + '</div>';
   if (r.flags.length) h += '<ul class="befund">' + r.flags.map(function (f) { return '<li>' + esc(f.text) + '</li>'; }).join('') + '</ul>';
+  h += '<div class="regal"><label for="regal-preis">Preis im Geschäft prüfen</label><div class="regal-zeile"><input id="regal-preis" type="text" inputmode="decimal" autocomplete="off" placeholder="z. B. ' + esc(String(r.bezahlt.toFixed(2)).replace('.', ',')) + '"><span>€ für ' + packung(r.q, a.e) + '</span></div><div id="regal-urteil" class="regal-urteil" aria-live="polite"></div></div>';
   h += vglDetail(a.id);
   h += '<h3 style="font-size:14px;margin:14px 0 4px">Grundpreis je ' + e + '</h3>' + diagramm(r);
   h += '<div class="legende"><span><i style="background:var(--akzent)"></i>bezahlt</span><span><i style="background:var(--leise)"></i>Normalpreis</span><span><i style="background:var(--mittel)"></i>Median</span><span><i style="background:var(--gut-bg);height:10px"></i>Aktion</span></div>';
@@ -1040,9 +1078,11 @@ function oeffne(id) {
   var aus = ausgeblendet.has(a.id);
   h += '<div class="aktionen"><button id="fav-detail">' + (favoriten.has(a.id) ? '★ Favorit' : '☆ Als Favorit merken') + '</button><a href="' + esc(a.u) + '" target="_blank" rel="noopener">Im Shop ansehen ↗</a><button id="ausblenden">' + (aus ? 'Wieder einblenden' : 'Nicht relevant – ausblenden') + '</button></div>';
   h += '<p style="color:var(--leise);font-size:12px;margin-top:10px">Ausblenden gilt nur in diesem Browser. Dauerhaft für alle: <code>"' + esc(a.id) + '"</code> in <code>konfig.json</code> unter <code>ausgeblendet</code> eintragen.</p>';
+  if (window.PT_SCAN_STOPP) window.PT_SCAN_STOPP();
   $('blatt').innerHTML = h;
   document.body.classList.add('offen');
   if (window.PT_KAEUFE) window.PT_KAEUFE(a.id, $('kaeufe'));
+  $('regal-preis').oninput = function () { $('regal-urteil').innerHTML = regalUrteil(r, this.value); };
   $('zu').onclick = schliesse;
   $('fav-detail').onclick = function () { schalteFav(a.id); this.textContent = favoriten.has(a.id) ? '★ Favorit' : '☆ Als Favorit merken'; zeichne(); };
   $('ausblenden').onclick = function () {
@@ -1051,7 +1091,7 @@ function oeffne(id) {
   };
   $('zu').focus();
 }
-function schliesse() { document.body.classList.remove('offen'); }
+function schliesse() { if (window.PT_SCAN_STOPP) window.PT_SCAN_STOPP(); document.body.classList.remove('offen'); }
 
 // ------------------------------------------------------------------ Ereignisse
 $('r-angebote').onclick = function () { Z.reiter = 'angebote'; Z.limit = 100; fuelleSortierung(); merke(); zeichne(); };
@@ -1131,7 +1171,9 @@ zeichne();
 // Angebote sofort, Suchindex (fuer Favoriten-Zaehler und Suche) im Hintergrund laden
 lade('angebote').then(function (l) { ANGEBOTE = merkeVoll(l); zeichne(); return ladeSuche(); }).then(function () { zeichne(); });
 // Schnittstelle fuer Erweiterungen (Einkaeufe/Rechnungen)
-window.PT = { D: D, POOL: POOL, ladeSuche: ladeSuche, SUCHE_ID: SUCHE_ID, oeffne: oeffne, euro: euro, datum: datum, tag: tag };
+window.PT = { D: D, POOL: POOL, ladeSuche: ladeSuche, SUCHE_ID: SUCHE_ID, oeffne: oeffne, euro: euro, datum: datum, tag: tag,
+  esc: esc, packung: packung, MARKTNAME: MARKTNAME, mk: mk, vglWoerter: vglWoerter, gruppe: function (id) { return GRUPPE[id]; }, vergleich: vergleich,
+  schliesse: schliesse, zeigeBlatt: function (html) { if (window.PT_SCAN_STOPP) window.PT_SCAN_STOPP(); $('blatt').innerHTML = html; document.body.classList.add('offen'); } };
 
 // Alle 5 Minuten (und beim Zurueckkehren in den Tab) nach neuem Datenstand sehen und dann neu laden.
 // Ist gerade ein Artikel-Detail offen, erst einen Hinweis zeigen statt die Seite unter den Fingern zu wechseln.
@@ -1156,5 +1198,6 @@ if (location.protocol !== 'file:') {
 })();
 </script>
 <script src="einkaeufe.js"></script>
+<script src="scanner.js"></script>
 </body>
 </html>

@@ -70,6 +70,22 @@ function schema(PDO $pdo): void {
         INDEX (artikel_id), INDEX (rechnung_id),
         CONSTRAINT fk_pt_rechnung FOREIGN KEY (rechnung_id) REFERENCES pt_rechnung(id) ON DELETE CASCADE
     ) DEFAULT CHARSET=utf8mb4");
+    // Strichcode-Scanner: eigene Zuordnung EAN -> Artikel (eine EAN kann in mehreren Maerkten vorkommen)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pt_ean (
+        ean VARCHAR(14) NOT NULL,
+        artikel_id VARCHAR(80) NOT NULL,
+        erstellt DATETIME NOT NULL,
+        PRIMARY KEY (ean, artikel_id)
+    ) DEFAULT CHARSET=utf8mb4");
+    // Zwischenspeicher fuer Open-Food-Facts-Antworten (Name, Marke, Menge)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pt_ean_info (
+        ean VARCHAR(14) NOT NULL PRIMARY KEY,
+        gefunden TINYINT(1) NOT NULL,
+        name VARCHAR(255) NULL,
+        marke VARCHAR(255) NULL,
+        menge VARCHAR(100) NULL,
+        geholt DATETIME NOT NULL
+    ) DEFAULT CHARSET=utf8mb4");
 }
 
 // Ablage der Rechnungs-Dateien (per .htaccess gesperrt, Auslieferung nur ueber datei.php)
