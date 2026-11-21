@@ -17,6 +17,7 @@ Rechnungen lädt Stefan auf preise.kaipel.at im Reiter **Einkäufe** hoch (Foto 
    `powershell -ExecutionPolicy Bypass -File rechnungen.ps1 -Suche "clever milch" -Markt billa`
    - Bon-Namen sind abgekürzt, deshalb mit Stichworten suchen (Marke plus Produkt) und Packungsgröße und Preis vergleichen.
    - Findet sich nichts Eindeutiges, `artikel_id: null` lassen. Lieber keine als eine falsche Zuordnung.
+   - Stefan kann jede Position im Reiter **Einkäufe** selbst zuordnen oder korrigieren (Knopf „zuordnen“ bzw. ✎). Nach dem Senden einer Auswertung deshalb nennen, welche Positionen offen geblieben sind.
    - **Normalpreis am Kaufdatum:** `rechnungen.ps1 -Preis "billa:00-123456" -Datum 2026-11-20`. Er wird bei Aktionen als `normalpreis` mitgeschickt.
 4. **Ergebnis** als `rechnungen\auswertung\<id>.json` schreiben (Format unten) und senden:
    `powershell -ExecutionPolicy Bypass -File rechnungen.ps1 -Senden rechnungen\auswertung\<id>.json`

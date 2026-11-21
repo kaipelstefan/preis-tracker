@@ -42,7 +42,9 @@ css.textContent = [
   '.ek-aktionen a, .ek-aktionen button { border: 1px solid var(--linie); background: var(--bg); border-radius: 8px; padding: 5px 10px; font-size: 13px; color: var(--text); text-decoration: none; cursor: pointer; }',
   '.ek-normal li { margin: 4px 0; }',
   '.ek-normal small { color: var(--leise); }',
-  '#kaeufe h3 { font-size: 14px; margin: 16px 0 4px; }'
+  '#kaeufe h3 { font-size: 14px; margin: 16px 0 4px; }',
+  '.ek-zuordnen { border: 0; background: none; color: var(--akzent); cursor: pointer; font-size: 12px; padding: 0 2px; }',
+  '.ek-zuordnen.offen { border: 1px solid var(--mittel); background: var(--mittel-bg); color: var(--mittel); border-radius: 6px; padding: 1px 6px; font-weight: 600; }'
 ].join('\n');
 document.head.appendChild(css);
 
@@ -109,14 +111,15 @@ function zeichne() {
   // Rechnungen
   if (!d.rechnungen.length) h += '<div class="hinweis">Noch keine Rechnungen. Lade oben die erste hoch.</div>';
   d.rechnungen.forEach(function (r) {
-    h += '<details class="ek-karte ek-rechnung"><summary><div><div><b>' + (r.datum ? datum(r.datum) : 'Hochgeladen ' + datum(r.hochgeladen)) + '</b> ' + marktHtml(r.markt) + '</div>' +
+    h += '<details class="ek-karte ek-rechnung"' + (OFFEN_RECHNUNG === r.id ? ' open' : '') + '><summary><div><div><b>' + (r.datum ? datum(r.datum) : 'Hochgeladen ' + datum(r.hochgeladen)) + '</b> ' + marktHtml(r.markt) + '</div>' +
          '<div class="meta">' + (r.filiale ? '<span>' + esc(r.filiale) + '</span>' : '') + (r.status !== 'ausgewertet' ? '<span class="ek-status">wartet auf Auswertung</span>' : '<span>' + r.positionen.length + ' Positionen</span>') + '</div></div>' +
          '<div class="rechts">' + (r.summe != null ? '<b>' + euro(r.summe) + '</b>' : '') + (r.ersparnis ? '<div class="ek-gut">−' + euro(r.ersparnis) + ' gespart</div>' : '') + '</div></summary>';
     if (r.positionen.length) {
       h += '<table class="ek-pos"><tr><th>Artikel</th><th class="z">Menge</th><th class="z">Bezahlt</th><th class="z">Rabatt</th></tr>';
       r.positionen.forEach(function (p) {
         var name = p.artikel_id ? '<a data-artikel="' + esc(p.artikel_id) + '">' + esc(p.name_bon) + '</a>' : esc(p.name_bon);
-        h += '<tr><td>' + name + (p.aktion ? ' <span class="badge b-echt">Aktion</span>' : '') + '</td><td class="z">' + (+(+p.menge).toFixed(3)) + (p.einheit && p.einheit !== 'stk' ? ' ' + esc(p.einheit) : '') + '</td><td class="z">' + euro(p.gesamt) + '</td><td class="z">' + (p.rabatt ? '−' + euro(p.rabatt) : '') + '</td></tr>';
+        var zu = '<button class="ek-zuordnen' + (p.artikel_id ? '' : ' offen') + '" data-zuordnen="' + p.id + '" data-rechnung="' + r.id + '" title="' + (p.artikel_id ? 'Zuordnung ändern' : 'Artikel zuordnen') + '">' + (p.artikel_id ? '✎' : 'zuordnen') + '</button>';
+        h += '<tr><td>' + name + (p.aktion ? ' <span class="badge b-echt">Aktion</span>' : '') + ' ' + zu + '</td><td class="z">' + (+(+p.menge).toFixed(3)) + (p.einheit && p.einheit !== 'stk' ? ' ' + esc(p.einheit) : '') + '</td><td class="z">' + euro(p.gesamt) + '</td><td class="z">' + (p.rabatt ? '−' + euro(p.rabatt) : '') + '</td></tr>';
       });
       h += '</table>';
     }
@@ -145,9 +148,71 @@ function hochladen(dateien) {
 bereich.addEventListener('click', function (ev) {
   var a = ev.target.closest('[data-artikel]');
   if (a) { ev.preventDefault(); var id = a.dataset.artikel; if (window.PT) window.PT.ladeSuche().then(function () { window.PT.oeffne(id); }); return; }
+  var zb = ev.target.closest('[data-zuordnen]');
+  if (zb) { ev.preventDefault(); zuordnen(+zb.dataset.zuordnen, +zb.dataset.rechnung); return; }
   var l = ev.target.closest('[data-loeschen]');
   if (l && confirm('Rechnung samt Scan endgültig löschen?')) holeJson('einkaeufe.php?loeschen=' + l.dataset.loeschen, { method: 'POST' }).then(laden, function (e) { alert(e.message); });
 });
+
+// ------------------------------------------------------------------ Bon-Position haendisch zuordnen
+var OFFEN_RECHNUNG = null;   // nach dem Neuladen dieselbe Rechnung wieder aufklappen
+function zuordnen(posId, rechnungId) {
+  var PT = window.PT; if (!PT || !DATEN) return;
+  var r = DATEN.rechnungen.filter(function (x) { return x.id === rechnungId; })[0]; if (!r) return;
+  var p = r.positionen.filter(function (x) { return x.id === posId; })[0]; if (!p) return;
+  var stueck = p.einzelpreis != null ? p.einzelpreis : (p.menge ? p.gesamt / p.menge : p.gesamt);
+  // Bon-Kuerzel als Startwert: Zahlen und Einheiten weg ("COKE ZERO0,5" -> "coke zero")
+  var start = String(p.name_bon).toLowerCase().replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-z])(\d)/g, '$1 $2').replace(/\d+([.,]\d+)?\s*(kg|g|l|ml|cl)?\b/g, ' ').replace(/[^a-zäöüß*]+/g, ' ').trim();
+  PT.zeigeBlatt('<button class="zu" id="zu" aria-label="Schließen">×</button><h2>Bon-Position zuordnen</h2>' +
+    '<div class="scan-produkt"><b>' + esc(p.name_bon) + '</b> · ' + (+(+p.menge).toFixed(3)) + (p.einheit && p.einheit !== 'stk' ? ' ' + esc(p.einheit) : ' ×') + ' · ' + euro(stueck) + (p.einheit === 'kg' ? ' / kg' : ' je Stück') + ' · ' + marktHtml(r.markt) + ' ' + datum(r.datum) +
+    (p.artikel_id ? '<br><small>Derzeit: ' + esc((PT.SUCHE_ID[p.artikel_id] || [null, p.artikel_id])[1]) + '</small>' : '<br><small>Noch keinem Artikel zugeordnet</small>') + '</div>' +
+    '<form class="scan-form" id="zo-form"><input id="zo-text" autocomplete="off" value="' + esc(start) + '" placeholder="Artikel suchen, z. B. coca cola zero" aria-label="Artikel suchen"><button>Suchen</button></form>' +
+    '<label style="font-size:13px;color:var(--leise);display:flex;gap:6px;align-items:center"><input type="checkbox" id="zo-alle"> auch in anderen Märkten suchen</label>' +
+    '<div id="zo-liste" class="scan-status">Wird geladen …</div>' +
+    (p.artikel_id ? '<div class="ek-aktionen"><button id="zo-weg">Zuordnung entfernen</button></div>' : ''));
+  $('zu').onclick = PT.schliesse;
+  function suche() {
+    PT.ladeSuche().then(function (S) {
+      var q = PT.vglWoerter($('zo-text').value), alle = $('zo-alle').checked || !r.markt;
+      if (!q.length) { $('zo-liste').innerHTML = 'Suchbegriff eingeben.'; return; }
+      var l = S.filter(function (z) {
+        if (!alle && z[2] !== r.markt) return false;
+        var w = PT.vglWoerter(z[1] + ' ' + (z[9] || ''));
+        return q.every(function (t) { return w.some(function (x) { return x.indexOf(t) === 0; }); });
+      });
+      // aehnlicher Preis zuerst (Stueckpreis bzw. kg-Preis wie am Bon), dann kuerzere Namen
+      // Groessen am Bon ("0,5", "250G", "1,5L") -> passende Packungen bevorzugen
+      var groessen = [];
+      String(p.name_bon).replace(/(\d+(?:[.,]\d+)?)\s*(kg|g|ml|cl|l)?/gi, function (_, n, e) {
+        var v = parseFloat(n.replace(',', '.')); e = (e || '').toLowerCase();
+        if (e === 'g' || e === 'ml') v /= 1000; else if (e === 'cl') v /= 100;
+        if (v > 0) groessen.push(v);
+      });
+      function abstand(z) {
+        var pr = z[6] != null ? z[6] : z[5]; if (p.einheit === 'kg' && z[8] === 'kg' && z[7] > 0) pr = pr / z[7];
+        var passt = groessen.some(function (g) { return Math.abs(z[7] - g) <= g * 0.02; });
+        return Math.abs(Math.log((pr || 1) / (stueck || 1))) - (passt ? 1 : 0);
+      }
+      l.sort(function (a, b) { return abstand(a) - abstand(b) || a[1].length - b[1].length; });
+      $('zo-liste').className = '';
+      $('zo-liste').innerHTML = l.length ? '<ul class="scan-liste">' + l.slice(0, 25).map(function (z) {
+        var pr = z[6] != null ? z[6] : z[5];
+        return '<li><div class="nm">' + esc(z[1]) + '</div><div class="mt">' + marktHtml(z[2]) + '<span>' + PT.packung(z[7], z[8]) + '</span><span>' + euro(pr) + (z[6] != null ? ' (Aktion)' : '') + '</span>' + (z[0] === p.artikel_id ? '<span class="badge b-echt">aktuell</span>' : '') + '</div>' +
+          '<button class="scan-knopf2" data-wahl="' + esc(z[0]) + '">Zuordnen</button></li>';
+      }).join('') + '</ul>' + (l.length > 25 ? '<p class="scan-status">' + (l.length - 25) + ' weitere – Suche genauer machen.</p>' : '')
+        : '<p class="scan-status">Nichts gefunden' + (alle ? '' : ' bei ' + esc(MARKT[r.markt] || r.markt) + ' – Häkchen „auch in anderen Märkten“ setzen oder anders suchen') + '.</p>';
+    });
+  }
+  function speichere(aid) {
+    holeJson('einkaeufe.php?zuordnen=' + posId, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ artikel_id: aid }) })
+      .then(function () { OFFEN_RECHNUNG = rechnungId; PT.schliesse(); laden(); }, function (e) { alert('Speichern fehlgeschlagen: ' + e.message); });
+  }
+  $('zo-form').onsubmit = function (ev) { ev.preventDefault(); suche(); };
+  $('zo-alle').onchange = suche;
+  $('zo-liste').onclick = function (ev) { var b = ev.target.closest('[data-wahl]'); if (b) speichere(b.dataset.wahl); };
+  if ($('zo-weg')) $('zo-weg').onclick = function () { speichere(null); };
+  suche();
+}
 
 // ------------------------------------------------------------------ Im Artikel-Detail: eigene Kaeufe und Preisentwicklung seither
 window.PT_KAEUFE = function (id, el) {
